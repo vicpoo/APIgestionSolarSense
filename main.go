@@ -8,6 +8,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/vicpoo/apigestion-solar-go/src/core"
+	authinfra "github.com/vicpoo/apigestion-solar-go/src/login/infrastructure"
 	systemnewsinfra "github.com/vicpoo/apigestion-solar-go/src/system_news/infrastructure"
 )
 
@@ -34,6 +35,7 @@ func main() {
 	}))
 
 	// Registrar rutas
+	authinfra.InitAuthRoutes(router)
 	systemnewsinfra.NewSystemNewsRouter(router).Run()
 
 	// Iniciar servidor en puerto 8000
