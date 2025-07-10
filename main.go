@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -26,20 +27,35 @@ func main() {
 	// Crear motor Gin
 	router := gin.Default()
 
-	// Middleware CORS
+	// Configuración CORS mejorada
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"*"}, // Cambiar en producción
+		AllowOrigins:     []string{"https://solarsense.zapto.org"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept"},
+		ExposeHeaders:    []string{"Content-Length"},
 		AllowCredentials: true,
+		AllowWebSockets:  true,
 	}))
+
+	// Headers de seguridad adicionales
+	router.Use(func(c *gin.Context) {
+		c.Writer.Header().Set("Access-Control-Allow-Origin", "https://solarsense.zapto.org")
+		c.Writer.Header().Set("Cross-Origin-Opener-Policy", "same-origin-allow-popups")
+		c.Writer.Header().Set("Cross-Origin-Embedder-Policy", "unsafe-none")
+		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
+		c.Next()
+	})
 
 	// Registrar rutas
 	authinfra.InitAuthRoutes(router)
 	systemnewsinfra.NewSystemNewsRouter(router).Run()
 
-	// Iniciar servidor en puerto 8000
-	if err := router.Run(":8000"); err != nil {
+	// Iniciar servidor (mantén HTTP pero con los headers adecuados)
+	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8000"
+	}
+	if err := router.Run(":" + port); err != nil {
 		log.Fatal("Error al iniciar el servidor:", err)
 	}
 }
