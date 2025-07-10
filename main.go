@@ -48,7 +48,9 @@ func main() {
 	if port == "" {
 		port = "8000"
 	}
-	if err := router.Run(":" + port); err != nil {
-		log.Fatal("Error al iniciar el servidor:", err)
-	}
+	certFile := "/path/to/cert.pem"
+    keyFile := "/path/to/key.pem"
+    if err := router.RunTLS(":"+port, certFile, keyFile); err != nil {
+        log.Fatal("Error al iniciar el servidor:", err)
+    }
 }
