@@ -28,29 +28,35 @@ func main() {
 	// Crear motor Gin
 	router := gin.Default()
 
-	// Configuración CORS mejorada
-router.Use(cors.New(cors.Config{
-    AllowOrigins:     []string{"https://solarsense.zapto.org", "http://localhost:4200"},
-    AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-    AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept"},
-    ExposeHeaders:    []string{"Content-Length"},
-    AllowCredentials: true,
-    MaxAge:           12 * time.Hour,
-}))
+	// Middleware de headers de seguridad
+	router.Use(func(c *gin.Context) {
+		c.Header("Cross-Origin-Opener-Policy", "same-origin-allow-popups")
+		c.Header("Cross-Origin-Embedder-Policy", "require-corp")
+		c.Next()
+	})
 
+	// Configuración CORS mejorada
+	router.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"https://solarsense.zapto.org", "http://localhost:4200"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
 
 	// Registrar rutas
 	authinfra.InitAuthRoutes(router)
 	systemnewsinfra.NewSystemNewsRouter(router).Run()
 
-	// Iniciar servidor (mantén HTTP pero con los headers adecuados)
+	// Iniciar servidor con HTTPS
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8000"
 	}
 	certFile := "/path/to/cert.pem"
-    keyFile := "/path/to/key.pem"
-    if err := router.RunTLS(":"+port, certFile, keyFile); err != nil {
-        log.Fatal("Error al iniciar el servidor:", err)
-    }
+	keyFile := "/path/to/key.pem"
+	if err := router.RunTLS(":"+port, certFile, keyFile); err != nil {
+		log.Fatal("Error al iniciar el servidor:", err)
+	}
 }
