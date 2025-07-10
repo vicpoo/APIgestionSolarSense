@@ -29,7 +29,7 @@ func main() {
 
 	// Configuración CORS mejorada
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"https://solarsense.zapto.org"},
+		AllowOrigins:     []string{"*"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept"},
 		ExposeHeaders:    []string{"Content-Length"},
@@ -37,14 +37,7 @@ func main() {
 		AllowWebSockets:  true,
 	}))
 
-	// Headers de seguridad adicionales
-	router.Use(func(c *gin.Context) {
-		c.Writer.Header().Set("Access-Control-Allow-Origin", "https://solarsense.zapto.org")
-		c.Writer.Header().Set("Cross-Origin-Opener-Policy", "same-origin-allow-popups")
-		c.Writer.Header().Set("Cross-Origin-Embedder-Policy", "unsafe-none")
-		c.Writer.Header().Set("Access-Control-Allow-Credentials", "true")
-		c.Next()
-	})
+
 
 	// Registrar rutas
 	authinfra.InitAuthRoutes(router)
