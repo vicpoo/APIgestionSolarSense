@@ -1,4 +1,4 @@
-//main.go
+//api/main.go
 package main
 
 import (
@@ -11,9 +11,12 @@ import (
     "github.com/gin-gonic/gin"
 
     "github.com/vicpoo/apigestion-solar-go/src/core"
+    alertinfra "github.com/vicpoo/apigestion-solar-go/src/alerts/infrastructure"
     authinfra "github.com/vicpoo/apigestion-solar-go/src/login/infrastructure"
+    membershipinfra "github.com/vicpoo/apigestion-solar-go/src/memberships/infrastructure"
     notificationinfra "github.com/vicpoo/apigestion-solar-go/src/notification_settings/infrastructure"
     readinginfra "github.com/vicpoo/apigestion-solar-go/src/sensor_readings/infrastructure"
+    reportinfra "github.com/vicpoo/apigestion-solar-go/src/reports/infrastructure"
     sensorinfra "github.com/vicpoo/apigestion-solar-go/src/sensors/infrastructure"
     sessioninfra "github.com/vicpoo/apigestion-solar-go/src/sessions/infrastructure"
     thresholdinfra "github.com/vicpoo/apigestion-solar-go/src/sensor_thresholds/infrastructure"
@@ -52,12 +55,15 @@ func main() {
     }))
 
     // Registrar todas las rutas
+    alertinfra.InitAlertRoutes(router)
     authinfra.InitAuthRoutes(router)
-    sensorinfra.InitSensorRoutes(router)
-    readinginfra.InitReadingRoutes(router)
-    thresholdinfra.InitThresholdRoutes(router)
+    membershipinfra.InitMembershipRoutes(router)
     notificationinfra.InitSettingsRoutes(router)
+    readinginfra.InitReadingRoutes(router)
+    reportinfra.InitReportRoutes(router)
+    sensorinfra.InitSensorRoutes(router)
     sessioninfra.InitSessionRoutes(router)
+    thresholdinfra.InitThresholdRoutes(router)
     systemnewsinfra.NewSystemNewsRouter(router).Run()
 
     // Iniciar servidor
