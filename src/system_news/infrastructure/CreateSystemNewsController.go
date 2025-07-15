@@ -1,4 +1,4 @@
-// CreateSystemNewsController.go
+//api/src/system_news/infrastructure CreateSystemNewsController.go
 package infrastructure
 
 import (

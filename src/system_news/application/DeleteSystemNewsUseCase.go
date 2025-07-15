@@ -1,4 +1,4 @@
-// DeleteSystemNewsUseCase.go
+//api/src/system_news/application DeleteSystemNewsUseCase.go
 package application
 
 import repositories "github.com/vicpoo/apigestion-solar-go/src/system_news/domain"

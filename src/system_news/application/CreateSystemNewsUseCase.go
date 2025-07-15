@@ -1,4 +1,4 @@
-// CreateSystemNewsUseCase.go
+//api/src/system_news/application CreateSystemNewsUseCase.go
 package application
 
 import (

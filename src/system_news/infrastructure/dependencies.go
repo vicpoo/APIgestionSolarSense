@@ -1,4 +1,4 @@
-// dependencies.go
+//api/src/system_news/infrastructure dependencies.go
 package infrastructure
 
 import (

@@ -1,4 +1,4 @@
-// system_news_repository.go
+//api/src/system_news/domain system_news_repository.go
 package domain
 
 import (
