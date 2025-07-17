@@ -1,5 +1,4 @@
-//api\src\sensor_thresholds\domain\threshold_repository.go
-
+//api\src\notification_settings\domain\settings.go
 package domain
 
 type NotificationSettings struct {

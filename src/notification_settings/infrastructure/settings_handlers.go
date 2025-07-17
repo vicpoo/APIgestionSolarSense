@@ -1,5 +1,4 @@
-//api\src\sensor_thresholds\domain\threshold_repository.go
-
+//api\src\notification_settings/infrastructure/settings_handlers.go
 package infrastructure
 
 import (

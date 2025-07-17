@@ -1,4 +1,4 @@
-//api/src/login/infrastructure/auth_repository.go
+// api/src/login/infrastructure/auth_repository.go
 package infrastructure
 
 import (
@@ -7,8 +7,6 @@ import (
 	"fmt"
 
 	"github.com/vicpoo/apigestion-solar-go/src/login/domain"
-	
-
 )
 
 type AuthRepositoryImpl struct {
@@ -95,4 +93,65 @@ func (r *AuthRepositoryImpl) UpsertGoogleUser(ctx context.Context, userData map[
 		userData["photoURL"])
 	
 	return err
+}
+
+func (r *AuthRepositoryImpl) UpdateUserEmail(ctx context.Context, currentEmail, newEmail string) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("could not start transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Verificar si el nuevo email ya existe
+	var count int
+	err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM users WHERE email = ?", newEmail).Scan(&count)
+	if err != nil {
+		return fmt.Errorf("could not check email existence: %w", err)
+	}
+	if count > 0 {
+		return fmt.Errorf("email already in use")
+	}
+
+	// Actualizar en tabla users
+	_, err = tx.ExecContext(ctx, "UPDATE users SET email = ? WHERE email = ?", newEmail, currentEmail)
+	if err != nil {
+		return fmt.Errorf("could not update user email: %w", err)
+	}
+
+	// Actualizar en tabla email_auth
+	_, err = tx.ExecContext(ctx, "UPDATE email_auth SET email = ? WHERE email = ?", newEmail, currentEmail)
+	if err != nil {
+		return fmt.Errorf("could not update email_auth: %w", err)
+	}
+
+	return tx.Commit()
+}
+
+func (r *AuthRepositoryImpl) DeleteUserByEmail(ctx context.Context, email string) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("could not start transaction: %w", err)
+	}
+	defer tx.Rollback()
+
+	// Primero obtener el user_id para las eliminaciones en cascada
+	var userID int64
+	err = tx.QueryRowContext(ctx, "SELECT id FROM users WHERE email = ?", email).Scan(&userID)
+	if err != nil {
+		return fmt.Errorf("user not found: %w", err)
+	}
+
+	// Eliminar de email_auth
+	_, err = tx.ExecContext(ctx, "DELETE FROM email_auth WHERE user_id = ?", userID)
+	if err != nil {
+		return fmt.Errorf("could not delete from email_auth: %w", err)
+	}
+
+	// Eliminar de users (esto debería activar las eliminaciones en cascada para otras tablas)
+	_, err = tx.ExecContext(ctx, "DELETE FROM users WHERE id = ?", userID)
+	if err != nil {
+		return fmt.Errorf("could not delete user: %w", err)
+	}
+
+	return tx.Commit()
 }

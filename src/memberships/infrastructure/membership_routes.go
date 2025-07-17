@@ -1,24 +1,35 @@
-//src/memberships/infrastructure/api/membership_routes.go
-
 package infrastructure
 
 import (
     "github.com/gin-gonic/gin"
- 
     "github.com/vicpoo/apigestion-solar-go/src/memberships/application"
-   
 )
 
 func InitMembershipRoutes(router *gin.Engine) {
     repo := NewMySQLMembershipRepository()
-    service := application.NewMembershipService(repo)
-    handlers := NewMembershipHandlers(service)
 
+    // Crear casos de uso
+    getUseCase := application.NewGetMembershipUseCase(repo)
+    postUseCase := application.NewPostMembershipUseCase(repo)
+    putUseCase := application.NewPutMembershipUseCase(repo)
+    deleteUseCase := application.NewDeleteMembershipUseCase(repo)
+
+    // Crear handlers
+    getHandler := NewGetMembershipHandler(getUseCase)
+    postHandler := NewPostMembershipHandler(postUseCase)
+    putHandler := NewPutMembershipHandler(putUseCase)
+    deleteHandler := NewDeleteMembershipHandler(deleteUseCase)
+
+    // Crear controlador
+    controller := NewMembershipController(getHandler, postHandler, putHandler, deleteHandler)
+
+    // Configurar rutas
     membershipGroup := router.Group("/api/memberships")
     {
-        membershipGroup.GET("/user/:user_id", handlers.GetUserMembership)
-        membershipGroup.PUT("/user/:user_id", handlers.UpdateMembership)
-        membershipGroup.POST("/user/:user_id/upgrade", handlers.UpgradeToPremium)
-        membershipGroup.POST("/user/:user_id/downgrade", handlers.DowngradeToFree)
+        membershipGroup.GET("/user/:user_id", controller.GetUserMembership)
+        membershipGroup.PUT("/user/:user_id", controller.CreateOrUpdate)
+        membershipGroup.POST("/user/:user_id/upgrade", controller.UpgradeToPremium)
+        membershipGroup.POST("/user/:user_id/downgrade", controller.DowngradeToFree)
+        membershipGroup.DELETE("/user/:user_id", controller.DeleteMembership)
     }
 }

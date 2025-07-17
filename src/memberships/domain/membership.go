@@ -1,4 +1,4 @@
-//src/memberships/domain/models/membership.go
+//src/memberships/domain/membership.go
 
 package domain
 

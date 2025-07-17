@@ -1,4 +1,4 @@
-//src/memberships/infrastructure/api/membership_handlers.go
+//src/memberships/infrastructure/membership_handlers.go
 
 package infrastructure
 

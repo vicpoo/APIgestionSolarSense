@@ -5,7 +5,6 @@ package application
 import (
     "context"
     "github.com/vicpoo/apigestion-solar-go/src/memberships/domain"
- 
 )
 
 type MembershipService struct {
@@ -30,4 +29,8 @@ func (s *MembershipService) UpgradeToPremium(ctx context.Context, userID int) er
 
 func (s *MembershipService) DowngradeToFree(ctx context.Context, userID int) error {
     return s.repo.DowngradeToFree(ctx, userID)
+}
+
+func (s *MembershipService) DeleteMembership(ctx context.Context, userID int) error {
+    return s.repo.Delete(ctx, userID)
 }

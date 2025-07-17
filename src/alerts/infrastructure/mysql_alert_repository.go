@@ -1,4 +1,4 @@
-//src/alerts/infrastructure/persistence/mysql_alert_repository.go
+//src/alerts/infrastructure/mysql_alert_repository.go
 
 package infrastructure
 
@@ -111,6 +111,30 @@ func (r *MySQLAlertRepository) GetUnsent(ctx context.Context) ([]domain.Alert, e
 
 func (r *MySQLAlertRepository) MarkAsSent(ctx context.Context, id int) error {
     query := `UPDATE alerts SET is_sent = 1 WHERE id = ?`
+    _, err := r.db.ExecContext(ctx, query, id)
+    return err
+}
+
+func (r *MySQLAlertRepository) Update(ctx context.Context, alert *domain.Alert) error {
+    query := `UPDATE alerts SET 
+        sensor_id = ?, 
+        message = ?, 
+        alert_type = ?, 
+        is_sent = ? 
+        WHERE id = ?`
+    
+    _, err := r.db.ExecContext(ctx, query,
+        alert.SensorID,
+        alert.Message,
+        alert.AlertType,
+        alert.IsSent,
+        alert.ID,
+    )
+    return err
+}
+
+func (r *MySQLAlertRepository) Delete(ctx context.Context, id int) error {
+    query := `DELETE FROM alerts WHERE id = ?`
     _, err := r.db.ExecContext(ctx, query, id)
     return err
 }

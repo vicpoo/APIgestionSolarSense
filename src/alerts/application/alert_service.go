@@ -1,11 +1,9 @@
-//src/alerts/application/alert_service.go
-
+// src/alerts/application/alert_service.go
 package application
 
 import (
     "context"
     "github.com/vicpoo/apigestion-solar-go/src/alerts/domain"
-   
 )
 
 type AlertService struct {
@@ -15,6 +13,7 @@ type AlertService struct {
 func NewAlertService(repo domain.AlertRepository) *AlertService {
     return &AlertService{repo: repo}
 }
+
 
 func (s *AlertService) CreateAlert(ctx context.Context, alert *domain.Alert) error {
     return s.repo.Create(ctx, alert)
@@ -34,4 +33,12 @@ func (s *AlertService) GetUnsentAlerts(ctx context.Context) ([]domain.Alert, err
 
 func (s *AlertService) MarkAlertAsSent(ctx context.Context, id int) error {
     return s.repo.MarkAsSent(ctx, id)
+}
+
+func (s *AlertService) UpdateAlert(ctx context.Context, alert *domain.Alert) error {
+    return s.repo.Update(ctx, alert)
+}
+
+func (s *AlertService) DeleteAlert(ctx context.Context, id int) error {
+    return s.repo.Delete(ctx, id)
 }

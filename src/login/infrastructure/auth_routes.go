@@ -1,38 +1,34 @@
-//api\src\login\infrastructure\auth_routes.go
+// api/src/login/infrastructure/auth_routes.go
 package infrastructure
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/vicpoo/apigestion-solar-go/src/login/application"
-
 	"github.com/vicpoo/apigestion-solar-go/src/core"
+	"github.com/vicpoo/apigestion-solar-go/src/login/application"
 )
-
-type AuthRouter struct {
-	handlers *application.AuthHandlers
-}
-
-func NewAuthRouter(handlers *application.AuthHandlers) *AuthRouter {
-	return &AuthRouter{handlers: handlers}
-}
-
-func (r *AuthRouter) SetupRoutes(router *gin.Engine) {
-	authGroup := router.Group("/api/auth")
-	{
-		authGroup.POST("/email/register", r.handlers.RegisterEmail)
-		authGroup.POST("/email/login", r.handlers.LoginEmail)
-		authGroup.POST("/google", r.handlers.GoogleAuth)
-		
-	
-	}
-}
 
 func InitAuthRoutes(router *gin.Engine) {
 	db := core.GetBD()
 	repo := NewAuthRepository(db)
-	service := application.NewAuthService(repo)
-	handlers := application.NewAuthHandlers(service)
 	
-	authRouter := NewAuthRouter(handlers)
-	authRouter.SetupRoutes(router)
+	// Crear todos los casos de uso y servicios
+	authService := application.NewAuthService(repo)
+	authHandlers := application.NewAuthHandlers(authService)
+	getUseCase := application.NewGetAuthUseCase(repo)
+	updateUseCase := application.NewUpdateAuthUseCase(repo)
+	deleteUseCase := application.NewDeleteAuthUseCase(repo)
+	
+	// Crear el controlador unificado
+	loginController := NewLoginController(authHandlers, getUseCase, updateUseCase, deleteUseCase)
+	
+	// Configurar rutas
+	authGroup := router.Group("/api/auth")
+	{
+		authGroup.POST("/email/register", loginController.RegisterEmail)
+		authGroup.POST("/email/login", loginController.LoginEmail)
+		authGroup.GET("/email", loginController.GetUserByEmail)
+		authGroup.PUT("/email", loginController.UpdateUserEmail)
+		authGroup.DELETE("/email", loginController.DeleteUserByEmail)
+		authGroup.POST("/google", loginController.GoogleAuth)
+	}
 }

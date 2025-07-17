@@ -1,4 +1,4 @@
-//src/memberships/infrastructure/persistence/mysql_membership_repository.go
+//src/memberships/infrastructure/mysql_membership_repository.go
 
 package infrastructure
 
@@ -63,6 +63,12 @@ func (r *MySQLMembershipRepository) UpgradeToPremium(ctx context.Context, userID
 
 func (r *MySQLMembershipRepository) DowngradeToFree(ctx context.Context, userID int) error {
     query := `UPDATE memberships SET type = 'free', extra_storage = 0 WHERE user_id = ?`
+    _, err := r.db.ExecContext(ctx, query, userID)
+    return err
+}
+
+func (r *MySQLMembershipRepository) Delete(ctx context.Context, userID int) error {
+    query := `DELETE FROM memberships WHERE user_id = ?`
     _, err := r.db.ExecContext(ctx, query, userID)
     return err
 }
