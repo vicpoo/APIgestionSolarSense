@@ -53,3 +53,9 @@ func (r *MySQLSettingsRepository) Update(ctx context.Context, settings *domain.N
     )
     return err
 }
+
+func (r *MySQLSettingsRepository) Delete(ctx context.Context, userID int) error {
+    query := `DELETE FROM notification_settings WHERE user_id = ?`
+    _, err := r.db.ExecContext(ctx, query, userID)
+    return err
+}
