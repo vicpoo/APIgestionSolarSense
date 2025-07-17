@@ -1,4 +1,4 @@
-//api/src/reports/domain/report.go
+//api/src/reports/report.go
 
 package domain
 

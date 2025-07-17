@@ -1,11 +1,9 @@
-//api/src/sessions/aplication/session_service.go
-
+// src/sessions/application/session_service.go
 package application
 
 import (
     "context"
     "github.com/vicpoo/apigestion-solar-go/src/sessions/domain"
-
 )
 
 type SessionService struct {
@@ -26,4 +24,8 @@ func (s *SessionService) ValidateSession(ctx context.Context, token string) (*do
 
 func (s *SessionService) InvalidateSession(ctx context.Context, token string) error {
     return s.repo.Invalidate(ctx, token)
+}
+
+func (s *SessionService) DeleteSession(ctx context.Context, id int) error {
+    return s.repo.Delete(ctx, id)
 }

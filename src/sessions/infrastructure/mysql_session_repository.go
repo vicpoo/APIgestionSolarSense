@@ -1,13 +1,12 @@
-//src/sessions/infrastructure/persistence/mysql_session_repository.go
-
+// src/sessions/infrastructure/mysql_session_repository.go
 package infrastructure
 
 import (
     "context"
     "database/sql"
+    "time"
     "github.com/vicpoo/apigestion-solar-go/src/core"
     "github.com/vicpoo/apigestion-solar-go/src/sessions/domain"
-
 )
 
 type MySQLSessionRepository struct {
@@ -54,8 +53,20 @@ func (r *MySQLSessionRepository) GetByToken(ctx context.Context, token string) (
     return &session, nil
 }
 
+func (r *MySQLSessionRepository) UpdateExpiry(ctx context.Context, token string, newExpiry time.Time) error {
+    query := `UPDATE sessions SET expires_at = ? WHERE session_token = ?`
+    _, err := r.db.ExecContext(ctx, query, newExpiry, token)
+    return err
+}
+
 func (r *MySQLSessionRepository) Invalidate(ctx context.Context, token string) error {
     query := `UPDATE sessions SET is_active = 0 WHERE session_token = ?`
     _, err := r.db.ExecContext(ctx, query, token)
+    return err
+}
+
+func (r *MySQLSessionRepository) Delete(ctx context.Context, id int) error {
+    query := `DELETE FROM sessions WHERE id = ?`
+    _, err := r.db.ExecContext(ctx, query, id)
     return err
 }

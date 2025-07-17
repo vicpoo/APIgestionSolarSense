@@ -1,11 +1,9 @@
-//api/src/sensors/application/sensor_service.go
-
+// src/sensor_readings/application/reading_service.go
 package application
 
 import (
     "context"
     "github.com/vicpoo/apigestion-solar-go/src/sensor_readings/domain"
-
 )
 
 type ReadingService struct {
@@ -26,4 +24,12 @@ func (s *ReadingService) GetReadings(ctx context.Context, sensorID int, limit in
 
 func (s *ReadingService) GetLatestReading(ctx context.Context, sensorID int) (*domain.SensorReading, error) {
     return s.repo.GetLatestBySensorID(ctx, sensorID)
+}
+
+func (s *ReadingService) UpdateReading(ctx context.Context, reading *domain.SensorReading) error {
+    return s.repo.Update(ctx, reading)
+}
+
+func (s *ReadingService) DeleteReading(ctx context.Context, id int) error {
+    return s.repo.Delete(ctx, id)
 }

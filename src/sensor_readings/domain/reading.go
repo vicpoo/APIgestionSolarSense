@@ -1,4 +1,4 @@
-//api/src/sensors/application/sensor_service.go
+//api/src/sensor_readings/domain/reading.go
 
 package domain
 

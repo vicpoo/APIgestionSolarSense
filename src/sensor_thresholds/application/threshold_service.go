@@ -1,11 +1,9 @@
-//api\src\sensor_thresholds\domain\threshold_repository.go
-
+// api/src/sensor_thresholds/application/threshold_service.go
 package application
 
 import (
     "context"
     "github.com/vicpoo/apigestion-solar-go/src/sensor_thresholds/domain"
-
 )
 
 type ThresholdService struct {
@@ -20,6 +18,14 @@ func (s *ThresholdService) GetThresholds(ctx context.Context, sensorID int) (*do
     return s.repo.GetBySensorID(ctx, sensorID)
 }
 
-func (s *ThresholdService) SetThresholds(ctx context.Context, threshold *domain.SensorThreshold) error {
-    return s.repo.Upsert(ctx, threshold)
+func (s *ThresholdService) CreateThreshold(ctx context.Context, threshold *domain.SensorThreshold) error {
+    return s.repo.Create(ctx, threshold)
+}
+
+func (s *ThresholdService) UpdateThreshold(ctx context.Context, threshold *domain.SensorThreshold) error {
+    return s.repo.Update(ctx, threshold)
+}
+
+func (s *ThresholdService) DeleteThreshold(ctx context.Context, sensorID int) error {
+    return s.repo.Delete(ctx, sensorID)
 }

@@ -95,3 +95,27 @@ func (r *MySQLReportRepository) Delete(ctx context.Context, id int) error {
     _, err := r.db.ExecContext(ctx, query, id)
     return err
 }
+
+func (r *MySQLReportRepository) Update(ctx context.Context, report *domain.Report) error {
+    query := `UPDATE reports SET 
+        user_id = ?,
+        sensor_id = ?,
+        file_name = ?,
+        storage_path = ?,
+        generated_from = ?,
+        generated_to = ?,
+        format = ?
+        WHERE id = ?`
+    
+    _, err := r.db.ExecContext(ctx, query,
+        report.UserID,
+        report.SensorID,
+        report.FileName,
+        report.StoragePath,
+        report.GeneratedFrom,
+        report.GeneratedTo,
+        report.Format,
+        report.ID,
+    )
+    return err
+}
