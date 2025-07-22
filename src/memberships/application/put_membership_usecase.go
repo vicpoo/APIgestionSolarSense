@@ -3,6 +3,7 @@ package application
 
 import (
     "context"
+    "github.com/gin-gonic/gin"
     "github.com/vicpoo/apigestion-solar-go/src/memberships/domain"
 )
 
@@ -15,5 +16,11 @@ func NewPutMembershipUseCase(repo domain.MembershipRepository) *PutMembershipUse
 }
 
 func (uc *PutMembershipUseCase) CreateOrUpdate(ctx context.Context, membership *domain.Membership) error {
+    // Verificar que el contexto sea de Gin
+    if ginCtx, ok := ctx.(*gin.Context); ok {
+        // Usar el contexto Gin directamente
+        return uc.repo.CreateOrUpdate(ginCtx, membership)
+    }
+    // Si no es un contexto Gin, usar el contexto original
     return uc.repo.CreateOrUpdate(ctx, membership)
 }

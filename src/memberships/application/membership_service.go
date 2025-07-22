@@ -1,9 +1,9 @@
-//src/memberships/application/membership_service.go
-
+// src/memberships/application/membership_service.go
 package application
 
 import (
     "context"
+    "errors"
     "github.com/vicpoo/apigestion-solar-go/src/memberships/domain"
 )
 
@@ -20,6 +20,9 @@ func (s *MembershipService) GetUserMembership(ctx context.Context, userID int) (
 }
 
 func (s *MembershipService) UpdateMembership(ctx context.Context, membership *domain.Membership) error {
+    if !membership.IsValidType(membership.Type) {
+        return errors.New("invalid membership type")
+    }
     return s.repo.CreateOrUpdate(ctx, membership)
 }
 

@@ -1,7 +1,9 @@
 // src/memberships/infrastructure/membership_controller.go
 package infrastructure
 
-import "github.com/gin-gonic/gin"
+import (
+    "github.com/gin-gonic/gin"
+)
 
 type MembershipController struct {
     getHandler    *GetMembershipHandler

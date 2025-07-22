@@ -2,22 +2,23 @@
 package application
 
 import (
-    "context"
-    "github.com/vicpoo/apigestion-solar-go/src/memberships/domain"
+	"context"
+
+	"github.com/vicpoo/apigestion-solar-go/src/memberships/domain"
 )
 
 type PostMembershipUseCase struct {
-    repo domain.MembershipRepository
+	repo domain.MembershipRepository
 }
 
 func NewPostMembershipUseCase(repo domain.MembershipRepository) *PostMembershipUseCase {
-    return &PostMembershipUseCase{repo: repo}
+	return &PostMembershipUseCase{repo: repo}
 }
 
 func (uc *PostMembershipUseCase) UpgradeToPremium(ctx context.Context, userID int) error {
-    return uc.repo.UpgradeToPremium(ctx, userID)
+	return uc.repo.UpgradeToPremium(ctx, userID)
 }
 
 func (uc *PostMembershipUseCase) DowngradeToFree(ctx context.Context, userID int) error {
-    return uc.repo.DowngradeToFree(ctx, userID)
+	return uc.repo.DowngradeToFree(ctx, userID)
 }
