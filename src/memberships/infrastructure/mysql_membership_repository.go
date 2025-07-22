@@ -40,19 +40,6 @@ func (r *MySQLMembershipRepository) GetByUserID(ctx context.Context, userID int)
 }
 
 func (r *MySQLMembershipRepository) CreateOrUpdate(ctx context.Context, membership *domain.Membership) error {
-    // Obtener el ID del admin del contexto Gin
-    var changedBy int = 1 // Valor por defecto (admin principal)
-    
-    if ginCtx, ok := ctx.(*gin.Context); ok {
-        if claims, exists := ginCtx.Get("userClaims"); exists {
-            if claimsMap, ok := claims.(map[string]interface{}); ok {
-                if id, ok := claimsMap["user_id"].(float64); ok {
-                    changedBy = int(id)
-                }
-            }
-        }
-    }
-
     // Iniciar transacción
     tx, err := r.db.BeginTx(ctx, nil)
     if err != nil {
@@ -84,16 +71,15 @@ func (r *MySQLMembershipRepository) CreateOrUpdate(ctx context.Context, membersh
         return err
     }
 
-    // 3. Registrar el cambio en membership_changes
-    if currentType != "" { // Solo si existía un registro previo
+    // 3. Registrar el cambio en membership_changes (opcional, sin changed_by)
+    if currentType != "" {
         _, err = tx.ExecContext(ctx,
             `INSERT INTO membership_changes 
-             (user_id, old_role, new_role, changed_by) 
-             VALUES (?, ?, ?, ?)`,
+             (user_id, old_role, new_role) 
+             VALUES (?, ?, ?)`,
             membership.UserID,
             currentType,
             membership.Type,
-            changedBy,
         )
         if err != nil {
             return err
@@ -102,7 +88,6 @@ func (r *MySQLMembershipRepository) CreateOrUpdate(ctx context.Context, membersh
 
     return tx.Commit()
 }
-
 func (r *MySQLMembershipRepository) UpgradeToPremium(ctx context.Context, userID int) error {
     return r.changeMembershipType(ctx, userID, "premium")
 }
@@ -175,4 +160,66 @@ func (r *MySQLMembershipRepository) Delete(ctx context.Context, userID int) erro
     query := `DELETE FROM memberships WHERE user_id = ? AND user_id != 1`
     _, err := r.db.ExecContext(ctx, query, userID)
     return err
+}
+
+
+func (r *MySQLMembershipRepository) GetAllUsers(ctx context.Context) ([]*domain.UserWithMembership, error) {
+    query := `
+        SELECT 
+            u.id, 
+            u.email, 
+            u.display_name, 
+            u.photo_url,
+            u.provider,
+            u.is_active,
+            m.type AS membership_type,
+            m.extra_storage,
+            m.created_at AS membership_since
+        FROM 
+            users u
+        LEFT JOIN 
+            memberships m ON u.id = m.user_id
+        ORDER BY u.id`
+
+    rows, err := r.db.QueryContext(ctx, query)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var users []*domain.UserWithMembership
+    for rows.Next() {
+        var user domain.UserWithMembership
+        var photoURL sql.NullString // Usamos sql.NullString para campos que pueden ser NULL
+        
+        err := rows.Scan(
+            &user.ID,
+            &user.Email,
+            &user.DisplayName,
+            &photoURL,    // Escaneamos a sql.NullString
+            &user.Provider,
+            &user.IsActive,
+            &user.MembershipType,
+            &user.ExtraStorage,
+            &user.MembershipSince,
+        )
+        if err != nil {
+            return nil, err
+        }
+        
+        // Convertimos sql.NullString a *string
+        if photoURL.Valid {
+            user.PhotoURL = &photoURL.String
+        } else {
+            user.PhotoURL = nil
+        }
+        
+        users = append(users, &user)
+    }
+
+    if err = rows.Err(); err != nil {
+        return nil, err
+    }
+
+    return users, nil
 }

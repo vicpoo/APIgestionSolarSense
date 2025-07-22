@@ -17,3 +17,8 @@ func NewGetMembershipUseCase(repo domain.MembershipRepository) *GetMembershipUse
 func (uc *GetMembershipUseCase) GetUserMembership(ctx context.Context, userID int) (*domain.Membership, error) {
     return uc.repo.GetByUserID(ctx, userID)
 }
+
+// Nuevo método
+func (uc *GetMembershipUseCase) GetAllUsers(ctx context.Context) ([]*domain.UserWithMembership, error) {
+    return uc.repo.GetAllUsers(ctx)
+}

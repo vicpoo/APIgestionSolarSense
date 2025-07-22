@@ -32,7 +32,36 @@ func AuthMiddleware() gin.HandlerFunc {
             return
         }
 
-        // Para otros usuarios, implementar lógica de validación real
-        c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+        // Para otros usuarios, establecer claims básicos
+        // (En un sistema real, validarías el token JWT aquí)
+        c.Set("userClaims", map[string]interface{}{
+            "user_id": 2, // Esto sería extraído del token válido
+            "role":    "user",
+        })
+        c.Next()
+    }
+}
+
+func AdminMiddleware() gin.HandlerFunc {
+    return func(c *gin.Context) {
+        claims, exists := c.Get("userClaims")
+        if !exists {
+            c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Authentication required"})
+            return
+        }
+        
+        claimsMap, ok := claims.(map[string]interface{})
+        if !ok {
+            c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Invalid user claims"})
+            return
+        }
+        
+        role, ok := claimsMap["role"].(string)
+        if !ok || role != "admin" {
+            c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Admin privileges required"})
+            return
+        }
+        
+        c.Next()
     }
 }

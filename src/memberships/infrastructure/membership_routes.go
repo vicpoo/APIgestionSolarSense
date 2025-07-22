@@ -3,7 +3,6 @@ package infrastructure
 
 import (
     "github.com/gin-gonic/gin"
-    "github.com/vicpoo/apigestion-solar-go/src/core"
     "github.com/vicpoo/apigestion-solar-go/src/memberships/application"
 )
 
@@ -25,14 +24,14 @@ func InitMembershipRoutes(router *gin.Engine) {
     // Crear controlador
     controller := NewMembershipController(getHandler, postHandler, putHandler, deleteHandler)
 
-    // Configurar rutas con middleware de autenticación
+    // Configurar rutas SIN seguridad
     membershipGroup := router.Group("/api/memberships")
-    membershipGroup.Use(core.AuthMiddleware()) // Aplicar middleware a todas las rutas de membresía
     {
+        membershipGroup.GET("", controller.GetAllUsers)
         membershipGroup.GET("/user/:user_id", controller.GetUserMembership)
         membershipGroup.PUT("/user/:user_id", controller.CreateOrUpdate)
+        membershipGroup.DELETE("/user/:user_id", controller.DeleteMembership)
         membershipGroup.POST("/user/:user_id/upgrade", controller.UpgradeToPremium)
         membershipGroup.POST("/user/:user_id/downgrade", controller.DowngradeToFree)
-        membershipGroup.DELETE("/user/:user_id", controller.DeleteMembership)
     }
 }

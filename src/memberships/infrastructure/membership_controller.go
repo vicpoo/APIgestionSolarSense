@@ -1,9 +1,7 @@
 // src/memberships/infrastructure/membership_controller.go
 package infrastructure
 
-import (
-    "github.com/gin-gonic/gin"
-)
+import "github.com/gin-gonic/gin"
 
 type MembershipController struct {
     getHandler    *GetMembershipHandler
@@ -30,6 +28,9 @@ func (c *MembershipController) GetUserMembership(ctx *gin.Context) {
     c.getHandler.GetUserMembership(ctx)
 }
 
+func (c *MembershipController) GetAllUsers(ctx *gin.Context) {
+    c.getHandler.GetAllUsers(ctx)
+}
 func (c *MembershipController) UpgradeToPremium(ctx *gin.Context) {
     c.postHandler.UpgradeToPremium(ctx)
 }

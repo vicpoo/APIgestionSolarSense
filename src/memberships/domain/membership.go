@@ -34,3 +34,15 @@ func (m *Membership) IsValidType(membershipType string) bool {
     }
     return false
 }
+
+type UserWithMembership struct {
+    ID             int        `json:"id"`
+    Email          string     `json:"email"`
+    DisplayName    string     `json:"display_name"`
+    PhotoURL       *string    `json:"photo_url,omitempty"` // Cambiado a puntero
+    Provider       string     `json:"provider"`
+    IsActive       bool       `json:"is_active"`
+    MembershipType string     `json:"membership_type,omitempty"`
+    ExtraStorage   bool       `json:"extra_storage"`
+    MembershipSince time.Time `json:"membership_since,omitempty"`
+}

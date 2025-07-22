@@ -18,25 +18,7 @@ func NewPutMembershipHandler(useCase *application.PutMembershipUseCase) *PutMemb
 }
 
 func (h *PutMembershipHandler) CreateOrUpdate(c *gin.Context) {
-    // Verificar si el usuario es admin
-    claims, exists := c.Get("userClaims")
-    if !exists {
-        c.JSON(http.StatusForbidden, gin.H{"error": "Authentication required"})
-        return
-    }
-    
-    claimsMap, ok := claims.(map[string]interface{})
-    if !ok {
-        c.JSON(http.StatusForbidden, gin.H{"error": "Invalid user claims"})
-        return
-    }
-    
-    role, ok := claimsMap["role"].(string)
-    if !ok || role != "admin" {
-        c.JSON(http.StatusForbidden, gin.H{"error": "Only admins can modify memberships"})
-        return
-    }
-
+    // Obtener el user_id de la URL
     userID, err := strconv.Atoi(c.Param("user_id"))
     if err != nil {
         c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
@@ -51,7 +33,10 @@ func (h *PutMembershipHandler) CreateOrUpdate(c *gin.Context) {
 
     membership.UserID = userID
 
-    // Pasar el contexto Gin directamente
+    // Forzar el tipo a premium
+    membership.Type = "premium"
+    membership.ExtraStorage = true
+
     if err := h.useCase.CreateOrUpdate(c, &membership); err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
         return

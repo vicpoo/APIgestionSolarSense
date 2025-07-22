@@ -36,3 +36,33 @@ func (h *GetMembershipHandler) GetUserMembership(c *gin.Context) {
 
     c.JSON(http.StatusOK, membership)
 }
+
+// Nuevo método para obtener todos los usuarios
+func (h *GetMembershipHandler) GetAllUsers(c *gin.Context) {
+    // Verificar si el usuario es admin
+    claims, exists := c.Get("userClaims")
+    if !exists {
+        c.JSON(http.StatusForbidden, gin.H{"error": "Authentication required"})
+        return
+    }
+    
+    claimsMap, ok := claims.(map[string]interface{})
+    if !ok {
+        c.JSON(http.StatusForbidden, gin.H{"error": "Invalid user claims"})
+        return
+    }
+    
+    role, ok := claimsMap["role"].(string)
+    if !ok || role != "admin" {
+        c.JSON(http.StatusForbidden, gin.H{"error": "Only admins can list all users"})
+        return
+    }
+
+    users, err := h.useCase.GetAllUsers(c.Request.Context())
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        return
+    }
+
+    c.JSON(http.StatusOK, users)
+}
