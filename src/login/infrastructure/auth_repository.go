@@ -78,21 +78,58 @@ func (r *AuthRepositoryImpl) UpdateLastLogin(ctx context.Context, userID int64) 
 }
 
 func (r *AuthRepositoryImpl) UpsertGoogleUser(ctx context.Context, userData map[string]interface{}) error {
-	query := `INSERT INTO users (uid, email, display_name, photo_url, provider, last_login, auth_type) 
-	          VALUES (?, ?, ?, ?, 'google', NOW(), 'google')
-	          ON DUPLICATE KEY UPDATE 
-	          email = VALUES(email),
-	          display_name = VALUES(display_name),
-	          photo_url = VALUES(photo_url),
-	          last_login = NOW()`
+    // Iniciar transacción
+    tx, err := r.db.BeginTx(ctx, nil)
+    if err != nil {
+        return fmt.Errorf("could not start transaction: %w", err)
+    }
+    defer tx.Rollback()
 
-	_, err := r.db.ExecContext(ctx, query,
-		userData["uid"],
-		userData["email"],
-		userData["displayName"],
-		userData["photoURL"])
-	
-	return err
+    // 1. Insertar/actualizar usuario en tabla users
+    query := `INSERT INTO users (uid, email, display_name, photo_url, provider, auth_type, last_login) 
+              VALUES (?, ?, ?, ?, 'google', 'google', NOW())
+              ON DUPLICATE KEY UPDATE 
+              email = VALUES(email),
+              display_name = VALUES(display_name),
+              photo_url = VALUES(photo_url),
+              last_login = NOW()`
+
+    res, err := tx.ExecContext(ctx, query,
+        userData["uid"],
+        userData["email"],
+        userData["displayName"],
+        userData["photoURL"])
+    if err != nil {
+        return fmt.Errorf("could not upsert user: %w", err)
+    }
+
+    // 2. Obtener el ID del usuario (nuevo o existente)
+    var userID int64
+    if rowsAffected, _ := res.RowsAffected(); rowsAffected > 0 {
+        // Nuevo usuario - obtener el ID insertado
+        userID, err = res.LastInsertId()
+        if err != nil {
+            return fmt.Errorf("could not get user ID: %w", err)
+        }
+    } else {
+        // Usuario existente - obtener el ID por email
+        err = tx.QueryRowContext(ctx, "SELECT id FROM users WHERE email = ?", userData["email"]).Scan(&userID)
+        if err != nil {
+            return fmt.Errorf("could not get existing user ID: %w", err)
+        }
+    }
+
+    // 3. Crear membresía si no existe
+    _, err = tx.ExecContext(ctx, `
+        INSERT INTO memberships (user_id, type, extra_storage, created_at)
+        VALUES (?, 'free', 0, NOW())
+        ON DUPLICATE KEY UPDATE updated_at = NOW()`,
+        userID)
+    if err != nil {
+        return fmt.Errorf("could not create/update membership: %w", err)
+    }
+
+    return tx.Commit()
 }
 
 func (r *AuthRepositoryImpl) UpdateUserEmail(ctx context.Context, currentEmail, newEmail string) error {

@@ -22,3 +22,8 @@ func (uc *PostMembershipUseCase) UpgradeToPremium(ctx context.Context, userID in
 func (uc *PostMembershipUseCase) DowngradeToFree(ctx context.Context, userID int) error {
 	return uc.repo.DowngradeToFree(ctx, userID)
 }
+
+// Nuevo método
+func (uc *PostMembershipUseCase) FixMissingMemberships(ctx context.Context) error {
+	return uc.repo.FixMissingMemberships(ctx)
+}
