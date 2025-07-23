@@ -10,4 +10,6 @@ type AuthRepository interface {
 	UpsertGoogleUser(ctx context.Context, userData map[string]interface{}) error
 	UpdateUserEmail(ctx context.Context, currentEmail, newEmail string) error
 	DeleteUserByEmail(ctx context.Context, email string) error
+	GetAllUsers(ctx context.Context) ([]*User, error)
+    GetUserByID(ctx context.Context, userID int64) (*User, error)
 }

@@ -21,12 +21,14 @@ type GoogleAuthRequest struct {
 }
 
 type User struct {
-	ID        int64
-	Email     string
-	Username  string
-	AuthType  string
-	IsActive  bool
-	LastLogin time.Time
-	PhotoURL  string
-	Provider  string
+    ID        int64      `json:"id"`
+    UID       string     `json:"uid,omitempty"`
+    Email     string     `json:"email"`
+    Username  string     `json:"username"`
+    AuthType  string     `json:"auth_type"`
+    IsActive  bool       `json:"is_active"`
+    LastLogin time.Time  `json:"last_login"`
+    PhotoURL  string     `json:"photo_url,omitempty"`
+    Provider  string     `json:"provider,omitempty"`
+    CreatedAt time.Time  `json:"created_at"`
 }

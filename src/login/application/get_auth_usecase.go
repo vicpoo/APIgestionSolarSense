@@ -22,3 +22,11 @@ func (uc *GetAuthUseCase) GetUserByEmail(ctx context.Context, email string) (*do
 	}
 	return user, nil
 }
+
+func (uc *GetAuthUseCase) GetAllUsers(ctx context.Context) ([]*domain.User, error) {
+    return uc.repo.GetAllUsers(ctx)
+}
+
+func (uc *GetAuthUseCase) GetUserByID(ctx context.Context, userID int64) (*domain.User, error) {
+    return uc.repo.GetUserByID(ctx, userID)
+}

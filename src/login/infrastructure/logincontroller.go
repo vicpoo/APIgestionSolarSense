@@ -10,25 +10,29 @@ import (
 )
 
 type LoginController struct {
-	authHandlers   *application.AuthHandlers
-	getAuthUseCase *application.GetAuthUseCase
-	updateUseCase  *application.UpdateAuthUseCase
-	deleteUseCase  *application.DeleteAuthUseCase
+    authHandlers   *application.AuthHandlers
+    getAuthUseCase *application.GetAuthUseCase
+    updateUseCase  *application.UpdateAuthUseCase
+    deleteUseCase  *application.DeleteAuthUseCase
+    getAuthHandler *GetAuthHandler // Nuevo
 }
 
 func NewLoginController(
-	authHandlers *application.AuthHandlers,
-	getUseCase *application.GetAuthUseCase,
-	updateUseCase *application.UpdateAuthUseCase,
-	deleteUseCase *application.DeleteAuthUseCase,
+    authHandlers *application.AuthHandlers,
+    getUseCase *application.GetAuthUseCase,
+    updateUseCase *application.UpdateAuthUseCase,
+    deleteUseCase *application.DeleteAuthUseCase,
+    getAuthHandler *GetAuthHandler, // Nuevo
 ) *LoginController {
-	return &LoginController{
-		authHandlers:   authHandlers,
-		getAuthUseCase: getUseCase,
-		updateUseCase:  updateUseCase,
-		deleteUseCase:  deleteUseCase,
-	}
+    return &LoginController{
+        authHandlers:   authHandlers,
+        getAuthUseCase: getUseCase,
+        updateUseCase:  updateUseCase,
+        deleteUseCase:  deleteUseCase,
+        getAuthHandler: getAuthHandler, // Nuevo
+    }
 }
+
 
 // Handler para GET /api/auth/email
 func (c *LoginController) GetUserByEmail(ctx *gin.Context) {
@@ -96,4 +100,12 @@ func (c *LoginController) LoginEmail(ctx *gin.Context) {
 
 func (c *LoginController) GoogleAuth(ctx *gin.Context) {
 	c.authHandlers.GoogleAuth(ctx)
+}
+
+func (c *LoginController) GetAllUsers(ctx *gin.Context) {
+    c.getAuthHandler.GetAllUsers(ctx)
+}
+
+func (c *LoginController) GetUserByID(ctx *gin.Context) {
+    c.getAuthHandler.GetUserByID(ctx)
 }
