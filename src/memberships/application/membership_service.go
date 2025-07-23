@@ -5,6 +5,7 @@ import (
     "context"
     "errors"
     "github.com/vicpoo/apigestion-solar-go/src/memberships/domain"
+    "golang.org/x/crypto/bcrypt"
 )
 
 type MembershipService struct {
@@ -36,4 +37,19 @@ func (s *MembershipService) DowngradeToFree(ctx context.Context, userID int) err
 
 func (s *MembershipService) DeleteMembership(ctx context.Context, userID int) error {
     return s.repo.Delete(ctx, userID)
+}
+
+func (s *MembershipService) UpdateUser(ctx context.Context, userID int, email, username, password *string) error {
+	var passwordHash *string
+	
+	if password != nil {
+		hashed, err := bcrypt.GenerateFromPassword([]byte(*password), bcrypt.DefaultCost)
+		if err != nil {
+			return errors.New("could not hash password")
+		}
+		hashedStr := string(hashed)
+		passwordHash = &hashedStr
+	}
+
+	return s.repo.UpdateUser(ctx, userID, email, username, passwordHash)
 }

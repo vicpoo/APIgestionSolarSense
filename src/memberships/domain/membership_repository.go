@@ -12,4 +12,5 @@ type MembershipRepository interface {
 	Delete(ctx context.Context, userID int) error
 	RegisterUser(ctx context.Context, email, username, passwordHash string) (int64, error)
 	FixMissingMemberships(ctx context.Context) error // Nuevo método
-}
+       UpdateUser(ctx context.Context, userID int, email, username, passwordHash *string) error // Nuevo método   // 
+ }

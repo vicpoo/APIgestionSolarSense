@@ -8,11 +8,12 @@ import (
 )
 
 type MembershipController struct {
-	getHandler      *GetMembershipHandler
-	postHandler     *PostMembershipHandler
-	putHandler      *PutMembershipHandler
-	deleteHandler   *DeleteMembershipHandler
+	getHandler     *GetMembershipHandler
+	postHandler    *PostMembershipHandler
+	putHandler     *PutMembershipHandler
+	deleteHandler  *DeleteMembershipHandler
 	registerHandler *RegisterHandler
+	updateUserHandler *UpdateUserHandler // Nuevo
 }
 
 func NewMembershipController(
@@ -21,13 +22,15 @@ func NewMembershipController(
 	putHandler *PutMembershipHandler,
 	deleteHandler *DeleteMembershipHandler,
 	registerHandler *RegisterHandler,
+	updateUserHandler *UpdateUserHandler, // Nuevo
 ) *MembershipController {
 	return &MembershipController{
-		getHandler:      getHandler,
-		postHandler:     postHandler,
-		putHandler:      putHandler,
-		deleteHandler:   deleteHandler,
+		getHandler:     getHandler,
+		postHandler:    postHandler,
+		putHandler:     putHandler,
+		deleteHandler:  deleteHandler,
 		registerHandler: registerHandler,
+		updateUserHandler: updateUserHandler, // Nuevo
 	}
 }
 
@@ -61,4 +64,8 @@ func (c *MembershipController) DeleteMembership(ctx *gin.Context) {
 
 func (c *MembershipController) FixMissingMemberships(ctx *gin.Context) {
 	c.postHandler.FixMissingMemberships(ctx) // Ahora este método existe en PostMembershipHandler
+}
+
+func (c *MembershipController) UpdateUser(ctx *gin.Context) {
+	c.updateUserHandler.UpdateUser(ctx)
 }

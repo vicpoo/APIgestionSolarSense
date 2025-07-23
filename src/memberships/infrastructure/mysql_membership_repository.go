@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 	"github.com/vicpoo/apigestion-solar-go/src/core"
@@ -149,10 +150,86 @@ func (r *MySQLMembershipRepository) changeMembershipType(ctx context.Context, us
 	return tx.Commit()
 }
 
+func (r *MySQLMembershipRepository) UpdateUser(ctx context.Context, userID int, email, username, passwordHash *string) error {
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Actualizar usuario en tabla users
+	if email != nil || username != nil {
+		query := "UPDATE users SET "
+		var updates []string
+		var args []interface{}
+
+		if email != nil {
+			updates = append(updates, "email = ?")
+			args = append(args, *email)
+		}
+		if username != nil {
+			updates = append(updates, "display_name = ?")
+			args = append(args, *username)
+		}
+
+		query += strings.Join(updates, ", ") + " WHERE id = ?"
+		args = append(args, userID)
+
+		_, err = tx.ExecContext(ctx, query, args...)
+		if err != nil {
+			return fmt.Errorf("could not update user: %w", err)
+		}
+	}
+
+	// Actualizar credenciales si es usuario de email y se proporcionó password
+	if passwordHash != nil {
+		var authType string
+		err := tx.QueryRowContext(ctx, "SELECT auth_type FROM users WHERE id = ?", userID).Scan(&authType)
+		if err != nil {
+			return fmt.Errorf("could not get user auth type: %w", err)
+		}
+
+		if authType == "email" {
+			_, err = tx.ExecContext(ctx,
+				"UPDATE email_auth SET password_hash = ? WHERE user_id = ?",
+				*passwordHash, userID)
+			if err != nil {
+				return fmt.Errorf("could not update password: %w", err)
+			}
+		}
+	}
+
+	return tx.Commit()
+}
+
+
+
 func (r *MySQLMembershipRepository) Delete(ctx context.Context, userID int) error {
-	query := `DELETE FROM memberships WHERE user_id = ? AND user_id != 1`
-	_, err := r.db.ExecContext(ctx, query, userID)
-	return err
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+
+	// Eliminar membresía
+	_, err = tx.ExecContext(ctx, "DELETE FROM memberships WHERE user_id = ?", userID)
+	if err != nil {
+		return fmt.Errorf("could not delete membership: %w", err)
+	}
+
+	// Eliminar credenciales de email si existe
+	_, err = tx.ExecContext(ctx, "DELETE FROM email_auth WHERE user_id = ?", userID)
+	if err != nil {
+		return fmt.Errorf("could not delete email auth: %w", err)
+	}
+
+	// Finalmente eliminar el usuario
+	_, err = tx.ExecContext(ctx, "DELETE FROM users WHERE id = ?", userID)
+	if err != nil {
+		return fmt.Errorf("could not delete user: %w", err)
+	}
+
+	return tx.Commit()
 }
 
 func (r *MySQLMembershipRepository) GetAllUsers(ctx context.Context) ([]*domain.UserWithMembership, error) {
