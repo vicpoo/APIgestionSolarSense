@@ -6,6 +6,7 @@ import (
     "github.com/vicpoo/apigestion-solar-go/src/memberships/application"
 )
 
+// src/memberships/infrastructure/membership_routes.go
 func InitMembershipRoutes(router *gin.Engine) {
     repo := NewMySQLMembershipRepository()
 
@@ -14,19 +15,28 @@ func InitMembershipRoutes(router *gin.Engine) {
     postUseCase := application.NewPostMembershipUseCase(repo)
     putUseCase := application.NewPutMembershipUseCase(repo)
     deleteUseCase := application.NewDeleteMembershipUseCase(repo)
+    registerUseCase := application.NewRegisterUseCase(repo) // Nuevo
 
     // Crear handlers
     getHandler := NewGetMembershipHandler(getUseCase)
     postHandler := NewPostMembershipHandler(postUseCase)
     putHandler := NewPutMembershipHandler(putUseCase)
     deleteHandler := NewDeleteMembershipHandler(deleteUseCase)
+    registerHandler := NewRegisterHandler(registerUseCase) // Nuevo
 
     // Crear controlador
-    controller := NewMembershipController(getHandler, postHandler, putHandler, deleteHandler)
+    controller := NewMembershipController(
+        getHandler, 
+        postHandler, 
+        putHandler, 
+        deleteHandler,
+        registerHandler, // Nuevo
+    )
 
     // Configurar rutas SIN seguridad
     membershipGroup := router.Group("/api/memberships")
     {
+        membershipGroup.POST("/register", controller.RegisterUser) // Nueva ruta
         membershipGroup.GET("", controller.GetAllUsers)
         membershipGroup.GET("/user/:user_id", controller.GetUserMembership)
         membershipGroup.PUT("/user/:user_id", controller.CreateOrUpdate)

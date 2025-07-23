@@ -3,11 +3,13 @@ package infrastructure
 
 import "github.com/gin-gonic/gin"
 
+// src/memberships/infrastructure/membership_controller.go
 type MembershipController struct {
     getHandler    *GetMembershipHandler
     postHandler   *PostMembershipHandler
     putHandler    *PutMembershipHandler
     deleteHandler *DeleteMembershipHandler
+    registerHandler *RegisterHandler // Nuevo
 }
 
 func NewMembershipController(
@@ -15,13 +17,20 @@ func NewMembershipController(
     postHandler *PostMembershipHandler,
     putHandler *PutMembershipHandler,
     deleteHandler *DeleteMembershipHandler,
+    registerHandler *RegisterHandler, // Nuevo
 ) *MembershipController {
     return &MembershipController{
         getHandler:    getHandler,
         postHandler:   postHandler,
         putHandler:    putHandler,
         deleteHandler: deleteHandler,
+        registerHandler: registerHandler, // Nuevo
     }
+}
+
+// Nuevo método
+func (c *MembershipController) RegisterUser(ctx *gin.Context) {
+    c.registerHandler.RegisterUser(ctx)
 }
 
 func (c *MembershipController) GetUserMembership(ctx *gin.Context) {

@@ -1,7 +1,19 @@
 // src/memberships/domain/membership.go
 package domain
 
-import "time"
+import (
+	"errors"
+	"time"
+)
+
+// Errores personalizados
+var (
+	ErrInvalidCredentials  = errors.New("email, username and password are required")
+	ErrPasswordHashing     = errors.New("could not hash password")
+	ErrEmailAlreadyExists  = errors.New("email already in use")
+	ErrUserCreationFailed  = errors.New("could not create user")
+	ErrMembershipCreationFailed = errors.New("could not create membership")
+)
 
 type Membership struct {
     ID           int       `json:"id"`
@@ -10,6 +22,7 @@ type Membership struct {
     ExtraStorage bool      `json:"extra_storage"`
     CreatedAt    time.Time `json:"created_at"`
 }
+
 
 type MembershipChange struct {
     ID        int       `json:"id"`
