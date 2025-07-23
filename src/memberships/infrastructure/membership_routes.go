@@ -15,7 +15,7 @@ func InitMembershipRoutes(router *gin.Engine) {
 	deleteUseCase := application.NewDeleteMembershipUseCase(repo)
 	registerUseCase := application.NewRegisterUseCase(repo)
     updateUserUseCase := application.NewUpdateUserUseCase(repo)
-    
+
 	getHandler := NewGetMembershipHandler(getUseCase)
 	postHandler := NewPostMembershipHandler(postUseCase)
 	putHandler := NewPutMembershipHandler(putUseCase)
@@ -42,6 +42,6 @@ func InitMembershipRoutes(router *gin.Engine) {
 		membershipGroup.POST("/user/:user_id/downgrade", controller.DowngradeToFree)
 		membershipGroup.POST("/register", controller.RegisterUser)
         membershipGroup.PUT("/user/:user_id/update", controller.UpdateUser) // Nueva ruta
-		membershipGroup.DELETE("/user/:user_id", controller.DeleteMembership)
+		membershipGroup.DELETE("/user/:user_id/delete", controller.DeleteMembership)
 	}
 }
