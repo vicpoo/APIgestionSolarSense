@@ -205,31 +205,37 @@ func (r *MySQLMembershipRepository) UpdateUser(ctx context.Context, userID int, 
 
 
 func (r *MySQLMembershipRepository) Delete(ctx context.Context, userID int) error {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
+    tx, err := r.db.BeginTx(ctx, nil)
+    if err != nil {
+        return err
+    }
+    defer tx.Rollback()
 
-	// Eliminar membresía
-	_, err = tx.ExecContext(ctx, "DELETE FROM memberships WHERE user_id = ?", userID)
-	if err != nil {
-		return fmt.Errorf("could not delete membership: %w", err)
-	}
+    // 1. Primero eliminar los registros en membership_changes
+    _, err = tx.ExecContext(ctx, "DELETE FROM membership_changes WHERE user_id = ?", userID)
+    if err != nil {
+        return fmt.Errorf("could not delete membership changes: %w", err)
+    }
 
-	// Eliminar credenciales de email si existe
-	_, err = tx.ExecContext(ctx, "DELETE FROM email_auth WHERE user_id = ?", userID)
-	if err != nil {
-		return fmt.Errorf("could not delete email auth: %w", err)
-	}
+    // 2. Eliminar la membresía
+    _, err = tx.ExecContext(ctx, "DELETE FROM memberships WHERE user_id = ?", userID)
+    if err != nil {
+        return fmt.Errorf("could not delete membership: %w", err)
+    }
 
-	// Finalmente eliminar el usuario
-	_, err = tx.ExecContext(ctx, "DELETE FROM users WHERE id = ?", userID)
-	if err != nil {
-		return fmt.Errorf("could not delete user: %w", err)
-	}
+    // 3. Eliminar credenciales de email si existe
+    _, err = tx.ExecContext(ctx, "DELETE FROM email_auth WHERE user_id = ?", userID)
+    if err != nil {
+        return fmt.Errorf("could not delete email auth: %w", err)
+    }
 
-	return tx.Commit()
+    // 4. Finalmente eliminar el usuario
+    _, err = tx.ExecContext(ctx, "DELETE FROM users WHERE id = ?", userID)
+    if err != nil {
+        return fmt.Errorf("could not delete user: %w", err)
+    }
+
+    return tx.Commit()
 }
 
 func (r *MySQLMembershipRepository) GetAllUsers(ctx context.Context) ([]*domain.UserWithMembership, error) {
