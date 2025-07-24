@@ -304,6 +304,9 @@ func (r *AuthRepositoryImpl) GetUserMembershipType(ctx context.Context, userID i
     ).Scan(&membershipType)
 
     if err != nil {
+        if err == sql.ErrNoRows {
+            return "free", nil // Valor por defecto si no hay membresía
+        }
         return "", err
     }
 

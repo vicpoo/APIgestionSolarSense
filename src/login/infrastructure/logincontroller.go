@@ -124,7 +124,6 @@ func (c *LoginController) LoginEmail(ctx *gin.Context) {
     if err := ctx.ShouldBindJSON(&creds); err == nil {
         user, err := c.getUseCase.GetUserByEmail(ctx.Request.Context(), creds.Email)
         if err == nil {
-            // Obtener el tipo de membresía del usuario
             membershipType, err := c.getUseCase.GetUserMembershipType(ctx.Request.Context(), user.ID)
             if err != nil {
                 ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Could not get user membership"})
@@ -161,7 +160,6 @@ func (c *LoginController) GoogleAuth(ctx *gin.Context) {
         if err == nil {
             user, err := c.getUseCase.GetUserByEmail(ctx.Request.Context(), userData["email"].(string))
             if err == nil {
-                // Obtener el tipo de membresía del usuario
                 membershipType, err := c.getUseCase.GetUserMembershipType(ctx.Request.Context(), user.ID)
                 if err != nil {
                     ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Could not get user membership"})
