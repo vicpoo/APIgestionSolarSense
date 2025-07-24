@@ -46,7 +46,7 @@ func main() {
 
     // Configuración CORS mejorada
     router.Use(cors.New(cors.Config{
-        AllowOrigins:     []string{"https://solarsense.zapto.org", "http://localhost:4200"},
+        AllowOrigins:     []string{"https://solarsense.zapto.org", "http://localhost:4200","https://frontsolarsense.servepics.com"},
         AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
         AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept"},
         ExposeHeaders:    []string{"Content-Length"},
