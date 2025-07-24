@@ -10,114 +10,167 @@ import (
 )
 
 type LoginController struct {
-    authHandlers   *application.AuthHandlers
-    getAuthUseCase *application.GetAuthUseCase
-    updateUseCase  *application.UpdateAuthUseCase
-    deleteUseCase  *application.DeleteAuthUseCase
-    getAuthHandler *GetAuthHandler // Nuevo
+	authHandlers   *application.AuthHandlers
+	getUseCase     *application.GetAuthUseCase
+	updateUseCase  *application.UpdateAuthUseCase
+	deleteUseCase  *application.DeleteAuthUseCase
+	getAuthHandler *GetAuthHandler
 }
 
 func NewLoginController(
-    authHandlers *application.AuthHandlers,
-    getUseCase *application.GetAuthUseCase,
-    updateUseCase *application.UpdateAuthUseCase,
-    deleteUseCase *application.DeleteAuthUseCase,
-    getAuthHandler *GetAuthHandler, // Nuevo
+	authHandlers *application.AuthHandlers,
+	getUseCase *application.GetAuthUseCase,
+	updateUseCase *application.UpdateAuthUseCase,
+	deleteUseCase *application.DeleteAuthUseCase,
+	getAuthHandler *GetAuthHandler,
 ) *LoginController {
-    return &LoginController{
-        authHandlers:   authHandlers,
-        getAuthUseCase: getUseCase,
-        updateUseCase:  updateUseCase,
-        deleteUseCase:  deleteUseCase,
-        getAuthHandler: getAuthHandler, // Nuevo
-    }
+	return &LoginController{
+		authHandlers:   authHandlers,
+		getUseCase:     getUseCase,
+		updateUseCase:  updateUseCase,
+		deleteUseCase:  deleteUseCase,
+		getAuthHandler: getAuthHandler,
+	}
 }
 
-
-// Handler para GET /api/auth/email
-func (c *LoginController) GetUserByEmail(ctx *gin.Context) {
-	email := ctx.Query("email")
-	if email == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "email parameter is required"})
+func (c *LoginController) GetCurrentUser(ctx *gin.Context) {
+	userEmail, exists := ctx.Get("userEmail")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 		return
 	}
 
-	user, err := c.getAuthUseCase.GetUserByEmail(ctx.Request.Context(), email)
+	user, err := c.getUseCase.GetUserByEmail(ctx.Request.Context(), userEmail.(string))
 	if err != nil {
-		ctx.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
 
 	ctx.JSON(http.StatusOK, user)
 }
 
-// Handler para PUT /api/auth/email
 func (c *LoginController) UpdateUserEmail(ctx *gin.Context) {
+	userEmail, exists := ctx.Get("userEmail")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
 	var updateRequest struct {
-		CurrentEmail string `json:"current_email" binding:"required,email"`
-		NewEmail     string `json:"new_email" binding:"required,email"`
+		NewEmail string `json:"new_email" binding:"required,email"`
 	}
-
+	
 	if err := ctx.ShouldBindJSON(&updateRequest); err != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "invalid request: " + err.Error()})
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request: " + err.Error()})
 		return
 	}
-
-	err := c.updateUseCase.UpdateUserEmail(ctx.Request.Context(), updateRequest.CurrentEmail, updateRequest.NewEmail)
+	
+	err := c.updateUseCase.UpdateUserEmail(ctx.Request.Context(), userEmail.(string), updateRequest.NewEmail)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
-	ctx.JSON(http.StatusOK, gin.H{"message": "email updated successfully"})
+	
+	ctx.JSON(http.StatusOK, gin.H{"message": "Email updated successfully"})
 }
 
-// Handler para DELETE /api/auth/email
-func (c *LoginController) DeleteUserByEmail(ctx *gin.Context) {
-	email := ctx.Query("email")
-	if email == "" {
-		ctx.JSON(http.StatusBadRequest, gin.H{"error": "email parameter is required"})
+func (c *LoginController) UpdatePassword(ctx *gin.Context) {
+	userEmail, exists := ctx.Get("userEmail")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
 		return
 	}
 
-	err := c.deleteUseCase.DeleteUserByEmail(ctx.Request.Context(), email)
+	user, err := c.getUseCase.GetUserByEmail(ctx.Request.Context(), userEmail.(string))
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+		return
+	}
+
+	var updateRequest struct {
+		CurrentPassword string `json:"current_password" binding:"required"`
+		NewPassword     string `json:"new_password" binding:"required,min=8"`
+	}
+	
+	if err := ctx.ShouldBindJSON(&updateRequest); err != nil {
+		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request: " + err.Error()})
+		return
+	}
+	
+	err = c.updateUseCase.UpdatePassword(ctx.Request.Context(), user.ID, updateRequest.CurrentPassword, updateRequest.NewPassword)
 	if err != nil {
 		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
-
-	ctx.JSON(http.StatusOK, gin.H{"message": "user deleted successfully"})
+	
+	ctx.JSON(http.StatusOK, gin.H{"message": "Password updated successfully"})
 }
 
-// Handlers existentes (registro, login, google auth)
+func (c *LoginController) DeleteAccount(ctx *gin.Context) {
+	userEmail, exists := ctx.Get("userEmail")
+	if !exists {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+		return
+	}
+
+	err := c.deleteUseCase.DeleteUserByEmail(ctx.Request.Context(), userEmail.(string))
+	if err != nil {
+		ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	
+	ctx.JSON(http.StatusOK, gin.H{"message": "Account deleted successfully"})
+}
+
 func (c *LoginController) RegisterEmail(ctx *gin.Context) {
 	c.authHandlers.RegisterEmail(ctx)
 }
 
-// Modificar el handler de login para incluir el email en el contexto
 func (c *LoginController) LoginEmail(ctx *gin.Context) {
-    response, err := c.authHandlers.LoginEmail(ctx)
-    if err != nil {
-        ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
-        return
-    }
+	response, err := c.authHandlers.LoginEmail(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
 
-    // Obtener el email del cuerpo de la solicitud
-    var creds domain.UserCredentials
-    if err := ctx.ShouldBindJSON(&creds); err == nil {
-        ctx.Set("userEmail", creds.Email)
-    }
-    
-    ctx.JSON(http.StatusOK, response)
+	var creds domain.UserCredentials
+	if err := ctx.ShouldBindJSON(&creds); err == nil {
+		ctx.Set("userEmail", creds.Email)
+	}
+	
+	ctx.JSON(http.StatusOK, response)
 }
+
 func (c *LoginController) GoogleAuth(ctx *gin.Context) {
-	c.authHandlers.GoogleAuth(ctx)
+	response, err := c.authHandlers.GoogleAuth(ctx)
+	if err != nil {
+		ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+		return
+	}
+
+	var request struct {
+		IDToken string `json:"idToken"`
+	}
+	if err := ctx.ShouldBindJSON(&request); err == nil {
+		userData, err := decodeTokenWithoutVerification(request.IDToken)
+		if err == nil {
+			ctx.Set("userEmail", userData["email"])
+		}
+	}
+	
+	ctx.JSON(http.StatusOK, response)
 }
 
 func (c *LoginController) GetAllUsers(ctx *gin.Context) {
-    c.getAuthHandler.GetAllUsers(ctx)
+	c.getAuthHandler.GetAllUsers(ctx)
 }
 
 func (c *LoginController) GetUserByID(ctx *gin.Context) {
-    c.getAuthHandler.GetUserByID(ctx)
+	c.getAuthHandler.GetUserByID(ctx)
+}
+
+// Función auxiliar para decodificar tokens (similar a la que está en auth_service)
+func decodeTokenWithoutVerification(idToken string) (map[string]interface{}, error) {
+	// Implementación similar a la que ya tienes en auth_service
+	return nil, nil
 }

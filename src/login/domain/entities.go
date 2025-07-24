@@ -8,17 +8,13 @@ type AuthResponse struct {
 	Message string `json:"message,omitempty"`
 	Error   string `json:"error,omitempty"`
 	Token   string `json:"token,omitempty"`
-	IsAdmin bool   `json:"is_admin,omitempty"` // Nuevo campo
+	IsAdmin bool   `json:"is_admin,omitempty"`
 }
 
 type UserCredentials struct {
 	Email    string `json:"email"`
 	Password string `json:"password"`
 	Username string `json:"username,omitempty"`
-}
-
-type GoogleAuthRequest struct {
-	IDToken string `json:"idToken"`
 }
 
 type User struct {

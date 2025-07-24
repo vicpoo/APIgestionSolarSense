@@ -3,6 +3,7 @@ package application
 
 import (
 	"context"
+
 	"github.com/vicpoo/apigestion-solar-go/src/login/domain"
 )
 

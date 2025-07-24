@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/vicpoo/apigestion-solar-go/src/login/domain"
-
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -45,35 +44,30 @@ func (s *AuthServiceImpl) RegisterWithEmail(ctx context.Context, creds domain.Us
 }
 
 func (s *AuthServiceImpl) LoginWithEmail(ctx context.Context, creds domain.UserCredentials) (*domain.AuthResponse, error) {
-    if creds.Email == "" || creds.Password == "" {
-        return nil, errors.New("email and password are required")
-    }
+	if creds.Email == "" || creds.Password == "" {
+		return nil, errors.New("email and password are required")
+	}
 
-    // Solo permitir login al admin
-    if creds.Email != "admin@integrador.com" {
-        return nil, errors.New("only admin can login")
-    }
+	user, passwordHash, err := s.repo.FindUserByEmail(ctx, creds.Email)
+	if err != nil {
+		return nil, errors.New("invalid email or password")
+	}
 
-    user, _, err := s.repo.FindUserByEmail(ctx, creds.Email)
-    if err != nil {
-        return nil, fmt.Errorf("user not found: %v", err)
-    }
+	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(creds.Password)); err != nil {
+		return nil, errors.New("invalid email or password")
+	}
 
-    // Comparación directa para pruebas (eliminar en producción)
-    if creds.Password != "admin1234" {
-        return nil, errors.New("invalid credentials")
-    }
+	if err := s.repo.UpdateLastLogin(ctx, user.ID); err != nil {
+		return nil, errors.New("could not update last login")
+	}
 
-    if err := s.repo.UpdateLastLogin(ctx, user.ID); err != nil {
-        return nil, fmt.Errorf("failed to update last login: %v", err)
-    }
-
-    return &domain.AuthResponse{
-        Success: true,
-        Message: "Admin login successful",
-        IsAdmin: true,
-    }, nil
+	return &domain.AuthResponse{
+		Success: true,
+		Message: "Login successful",
+		Token:   "generated-jwt-token", // Implementar generación real de JWT
+	}, nil
 }
+
 func (s *AuthServiceImpl) AuthenticateWithGoogle(ctx context.Context, idToken string) (*domain.AuthResponse, error) {
 	userData, err := decodeTokenWithoutVerification(idToken)
 	if err != nil {
@@ -87,6 +81,7 @@ func (s *AuthServiceImpl) AuthenticateWithGoogle(ctx context.Context, idToken st
 	return &domain.AuthResponse{
 		Success: true,
 		Message: "Authentication successful",
+		Token:   "generated-jwt-token", // Implementar generación real de JWT
 	}, nil
 }
 func decodeTokenWithoutVerification(idToken string) (map[string]interface{}, error) {

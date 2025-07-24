@@ -1,3 +1,4 @@
+//src/login/infrastructure/admin_middleware.go
 package infrastructure
 
 import (
@@ -6,21 +7,42 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
+func AuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		token := c.GetHeader("Authorization")
+		if token == "" {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization token required"})
+			return
+		}
+		
+		// Implementar lógica real de validación de token
+		c.Set("userID", 123)
+		c.Set("userEmail", "user@example.com")
+		c.Set("authType", "email")
+		c.Set("isAdmin", false)
+		
+		c.Next()
+	}
+}
+
+func EmailUserMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		authType, exists := c.Get("authType")
+		if !exists || authType != "email" {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "This endpoint is only for email users"})
+			return
+		}
+		c.Next()
+	}
+}
+
 func AdminMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// Obtener el email del usuario autenticado (ajusta según tu sistema de autenticación)
-		userEmail, exists := c.Get("userEmail")
-		if !exists {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "authentication required"})
+		isAdmin, exists := c.Get("isAdmin")
+		if !exists || !isAdmin.(bool) {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Admin privileges required"})
 			return
 		}
-
-		// Verificar si es el admin
-		if userEmail != "admin@integrador.com" {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "admin privileges required"})
-			return
-		}
-
 		c.Next()
 	}
 }
