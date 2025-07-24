@@ -3,23 +3,35 @@ package infrastructure
 
 import (
 	"net/http"
+	"strings"
 
 	"github.com/gin-gonic/gin"
 )
 
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		token := c.GetHeader("Authorization")
-		if token == "" {
+		authHeader := c.GetHeader("Authorization")
+		if authHeader == "" {
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization token required"})
 			return
 		}
-		
-		// Implementar lógica real de validación de token
-		c.Set("userID", 123)
-		c.Set("userEmail", "user@example.com")
-		c.Set("authType", "email")
-		c.Set("isAdmin", false)
+
+		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+		if tokenString == authHeader {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization format"})
+			return
+		}
+
+		claims, err := ValidateJWTToken(tokenString)
+		if err != nil {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token: " + err.Error()})
+			return
+		}
+
+		c.Set("userID", claims.UserID)
+		c.Set("userEmail", claims.Email)
+		c.Set("authType", claims.AuthType)
+		c.Set("isAdmin", claims.IsAdmin)
 		
 		c.Next()
 	}

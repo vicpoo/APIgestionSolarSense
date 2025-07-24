@@ -14,4 +14,5 @@ type AuthRepository interface {
 	DeleteUserByEmail(ctx context.Context, email string) error
 	GetAllUsers(ctx context.Context) ([]*User, error)
 	GetUserByID(ctx context.Context, userID int64) (*User, error)
+	GetUserMembershipType(ctx context.Context, userID int64) (string, error)
 }

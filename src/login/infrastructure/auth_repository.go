@@ -295,3 +295,17 @@ func (r *AuthRepositoryImpl) GetUserByID(ctx context.Context, userID int64) (*do
 
 	return &user, nil
 }
+
+func (r *AuthRepositoryImpl) GetUserMembershipType(ctx context.Context, userID int64) (string, error) {
+    var membershipType string
+    err := r.db.QueryRowContext(ctx,
+        `SELECT type FROM memberships WHERE user_id = ?`,
+        userID,
+    ).Scan(&membershipType)
+
+    if err != nil {
+        return "", err
+    }
+
+    return membershipType, nil
+}

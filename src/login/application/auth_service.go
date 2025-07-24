@@ -43,46 +43,47 @@ func (s *AuthServiceImpl) RegisterWithEmail(ctx context.Context, creds domain.Us
 	}, nil
 }
 
+
 func (s *AuthServiceImpl) LoginWithEmail(ctx context.Context, creds domain.UserCredentials) (*domain.AuthResponse, error) {
-	if creds.Email == "" || creds.Password == "" {
-		return nil, errors.New("email and password are required")
-	}
+    if creds.Email == "" || creds.Password == "" {
+        return nil, errors.New("email and password are required")
+    }
 
-	user, passwordHash, err := s.repo.FindUserByEmail(ctx, creds.Email)
-	if err != nil {
-		return nil, errors.New("invalid email or password")
-	}
+    user, passwordHash, err := s.repo.FindUserByEmail(ctx, creds.Email)
+    if err != nil {
+        return nil, errors.New("invalid email or password")
+    }
 
-	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(creds.Password)); err != nil {
-		return nil, errors.New("invalid email or password")
-	}
+    if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(creds.Password)); err != nil {
+        return nil, errors.New("invalid email or password")
+    }
 
-	if err := s.repo.UpdateLastLogin(ctx, user.ID); err != nil {
-		return nil, errors.New("could not update last login")
-	}
+    if err := s.repo.UpdateLastLogin(ctx, user.ID); err != nil {
+        return nil, errors.New("could not update last login")
+    }
 
-	return &domain.AuthResponse{
-		Success: true,
-		Message: "Login successful",
-		Token:   "generated-jwt-token", // Implementar generación real de JWT
-	}, nil
+    return &domain.AuthResponse{
+        Success: true,
+        Message: "Login successful",
+        // El token ahora se genera en el controlador
+    }, nil
 }
 
 func (s *AuthServiceImpl) AuthenticateWithGoogle(ctx context.Context, idToken string) (*domain.AuthResponse, error) {
-	userData, err := decodeTokenWithoutVerification(idToken)
-	if err != nil {
-		return nil, errors.New("invalid token")
-	}
+    userData, err := decodeTokenWithoutVerification(idToken)
+    if err != nil {
+        return nil, errors.New("invalid token")
+    }
 
-	if err := s.repo.UpsertGoogleUser(ctx, userData); err != nil {
-		return nil, errors.New("could not save user data")
-	}
+    if err := s.repo.UpsertGoogleUser(ctx, userData); err != nil {
+        return nil, errors.New("could not save user data")
+    }
 
-	return &domain.AuthResponse{
-		Success: true,
-		Message: "Authentication successful",
-		Token:   "generated-jwt-token", // Implementar generación real de JWT
-	}, nil
+    return &domain.AuthResponse{
+        Success: true,
+        Message: "Authentication successful",
+        // El token ahora se genera en el controlador
+    }, nil
 }
 func decodeTokenWithoutVerification(idToken string) (map[string]interface{}, error) {
 	// Dividir el token JWT en sus partes

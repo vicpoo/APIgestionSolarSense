@@ -30,3 +30,7 @@ func (uc *GetAuthUseCase) GetAllUsers(ctx context.Context) ([]*domain.User, erro
 func (uc *GetAuthUseCase) GetUserByID(ctx context.Context, userID int64) (*domain.User, error) {
     return uc.repo.GetUserByID(ctx, userID)
 }
+
+func (uc *GetAuthUseCase) GetUserMembershipType(ctx context.Context, userID int64) (string, error) {
+    return uc.repo.GetUserMembershipType(ctx, userID)
+}

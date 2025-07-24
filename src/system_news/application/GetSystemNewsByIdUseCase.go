@@ -1,4 +1,4 @@
-// GetSystemNewsByIdUseCase.go
+//src/system_news/application GetSystemNewsByIdUseCase.go
 package application
 
 import (

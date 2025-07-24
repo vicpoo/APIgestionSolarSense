@@ -1,4 +1,4 @@
-// system_news.go
+//src/system_news/domain/entities system_news.go
 package entities
 
 import "time"

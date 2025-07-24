@@ -44,6 +44,7 @@ func InitAuthRoutes(router *gin.Engine) {
 			
 			protected.GET("/me", loginController.GetCurrentUser)
 			protected.DELETE("/account", loginController.DeleteAccount)
+			protected.DELETE("/account/:id", loginController.DeleteAccount)
 		}
 		
 		adminGroup := protected.Group("")

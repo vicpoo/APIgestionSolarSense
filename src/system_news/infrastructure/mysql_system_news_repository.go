@@ -1,4 +1,4 @@
-// mysql_system_news_repository.go
+//src/system_news/infrastructure mysql_system_news_repository.go
 package infrastructure
 
 import (

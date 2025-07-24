@@ -1,4 +1,4 @@
-// system_news_routes.go
+// src/system_news/infrastructure/system_news_routes.go
 package infrastructure
 
 import (

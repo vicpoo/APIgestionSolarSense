@@ -1,4 +1,4 @@
-// GetSystemNewsByIdController.go
+// src/system_news/infrastructure/GetSystemNewsByIdController.go
 package infrastructure
 
 import (
