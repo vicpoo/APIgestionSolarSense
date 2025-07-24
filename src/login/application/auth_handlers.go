@@ -3,9 +3,9 @@
 package application
 
 import (
-	
+	"errors"
 	"net/http"
-	
+
 	"github.com/gin-gonic/gin"
 	"github.com/vicpoo/apigestion-solar-go/src/login/domain"
 )
@@ -34,20 +34,18 @@ func (h *AuthHandlers) RegisterEmail(c *gin.Context) {
 	c.JSON(http.StatusCreated, response)
 }
 
-func (h *AuthHandlers) LoginEmail(c *gin.Context) {
-	var creds domain.UserCredentials
-	if err := c.ShouldBindJSON(&creds); err != nil {
-		respondWithError(c, http.StatusBadRequest, "Invalid request payload")
-		return
-	}
+func (h *AuthHandlers) LoginEmail(c *gin.Context) (*domain.AuthResponse, error) {
+    var creds domain.UserCredentials
+    if err := c.ShouldBindJSON(&creds); err != nil {
+        return nil, errors.New("invalid request payload")
+    }
 
-	response, err := h.service.LoginWithEmail(c.Request.Context(), creds)
-	if err != nil {
-		respondWithError(c, http.StatusUnauthorized, err.Error())
-		return
-	}
+    response, err := h.service.LoginWithEmail(c.Request.Context(), creds)
+    if err != nil {
+        return nil, err
+    }
 
-	c.JSON(http.StatusOK, response)
+    return response, nil
 }
 
 func (h *AuthHandlers) GoogleAuth(c *gin.Context) {
@@ -71,3 +69,4 @@ func (h *AuthHandlers) GoogleAuth(c *gin.Context) {
 func respondWithError(c *gin.Context, code int, message string) {
 	c.JSON(code, domain.AuthResponse{Error: message})
 }
+

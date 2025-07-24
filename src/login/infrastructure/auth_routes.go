@@ -8,43 +8,40 @@ import (
 )
 
 func InitAuthRoutes(router *gin.Engine) {
-	db := core.GetBD()
-	repo := NewAuthRepository(db)
-	
-	// Crear todos los casos de uso y servicios
-	authService := application.NewAuthService(repo)
-	authHandlers := application.NewAuthHandlers(authService)
-	getUseCase := application.NewGetAuthUseCase(repo)
-	updateUseCase := application.NewUpdateAuthUseCase(repo)
-	deleteUseCase := application.NewDeleteAuthUseCase(repo)
-	
-	// Crear el handler para obtener usuarios
-	getAuthHandler := NewGetAuthHandler(getUseCase)
-	
-	// Crear el controlador unificado con todos los parámetros necesarios
-	loginController := NewLoginController(
-		authHandlers, 
-		getUseCase, 
-		updateUseCase, 
-		deleteUseCase,
-		getAuthHandler, // Nuevo parámetro añadido
-	)
-	
-	// Configurar rutas
-	authGroup := router.Group("/api/auth")
-	{
-		// Autenticación por email
-		authGroup.POST("/email/register", loginController.RegisterEmail)
-		authGroup.POST("/email/login", loginController.LoginEmail)
-		authGroup.GET("/email", loginController.GetUserByEmail)
-		authGroup.PUT("/email", loginController.UpdateUserEmail)
-		authGroup.DELETE("/email", loginController.DeleteUserByEmail)
-		
-		// Autenticación por Google
-		authGroup.POST("/google", loginController.GoogleAuth)
-		
-		// Nuevos endpoints para obtener usuarios
-		authGroup.GET("/users", loginController.GetAllUsers)
-		authGroup.GET("/users/:user_id", loginController.GetUserByID)
-	}
+    db := core.GetBD()
+    repo := NewAuthRepository(db)
+    
+    authService := application.NewAuthService(repo)
+    authHandlers := application.NewAuthHandlers(authService)
+    getUseCase := application.NewGetAuthUseCase(repo)
+    updateUseCase := application.NewUpdateAuthUseCase(repo)
+    deleteUseCase := application.NewDeleteAuthUseCase(repo)
+    getAuthHandler := NewGetAuthHandler(getUseCase)
+    
+    loginController := NewLoginController(
+        authHandlers, 
+        getUseCase, 
+        updateUseCase, 
+        deleteUseCase,
+        getAuthHandler,
+    )
+    
+    authGroup := router.Group("/api/auth")
+    {
+        // Rutas públicas
+        authGroup.POST("/email/register", loginController.RegisterEmail)
+        authGroup.POST("/email/login", loginController.LoginEmail)
+        authGroup.POST("/google", loginController.GoogleAuth)
+        
+        // Rutas protegidas (solo admin)
+        adminGroup := authGroup.Group("")
+        adminGroup.Use(AdminMiddleware()) // Aplicar middleware a todas las rutas siguientes
+        {
+            adminGroup.GET("/email", loginController.GetUserByEmail)
+            adminGroup.PUT("/email", loginController.UpdateUserEmail)
+            adminGroup.DELETE("/email", loginController.DeleteUserByEmail)
+            adminGroup.GET("/users", loginController.GetAllUsers)
+            adminGroup.GET("/users/:user_id", loginController.GetUserByID)
+        }
+    }
 }

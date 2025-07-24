@@ -6,7 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/vicpoo/apigestion-solar-go/src/login/application"
-
+	"github.com/vicpoo/apigestion-solar-go/src/login/domain"
 )
 
 type LoginController struct {
@@ -94,10 +94,22 @@ func (c *LoginController) RegisterEmail(ctx *gin.Context) {
 	c.authHandlers.RegisterEmail(ctx)
 }
 
+// Modificar el handler de login para incluir el email en el contexto
 func (c *LoginController) LoginEmail(ctx *gin.Context) {
-	c.authHandlers.LoginEmail(ctx)
-}
+    response, err := c.authHandlers.LoginEmail(ctx)
+    if err != nil {
+        ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+        return
+    }
 
+    // Obtener el email del cuerpo de la solicitud
+    var creds domain.UserCredentials
+    if err := ctx.ShouldBindJSON(&creds); err == nil {
+        ctx.Set("userEmail", creds.Email)
+    }
+    
+    ctx.JSON(http.StatusOK, response)
+}
 func (c *LoginController) GoogleAuth(ctx *gin.Context) {
 	c.authHandlers.GoogleAuth(ctx)
 }

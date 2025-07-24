@@ -4,10 +4,11 @@ package domain
 import "time"
 
 type AuthResponse struct {
-	Success bool   `json:"success"`
-	Message string `json:"message,omitempty"`
-	Error   string `json:"error,omitempty"`
-	Token   string `json:"token,omitempty"`
+    Success bool   `json:"success"`
+    Message string `json:"message,omitempty"`
+    Error   string `json:"error,omitempty"`
+    Token   string `json:"token,omitempty"`
+    IsAdmin bool   `json:"is_admin,omitempty"` // Nuevo campo
 }
 
 type UserCredentials struct {
