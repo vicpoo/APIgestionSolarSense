@@ -22,26 +22,32 @@ func NewAuthService(repo domain.AuthRepository) domain.AuthService {
 }
 
 func (s *AuthServiceImpl) RegisterWithEmail(ctx context.Context, creds domain.UserCredentials) (*domain.AuthResponse, error) {
-	if creds.Email == "" || creds.Password == "" || creds.Username == "" {
-		return nil, errors.New("email, password and username are required")
-	}
+    if creds.Email == "" || creds.Password == "" || creds.Username == "" {
+        return nil, errors.New("email, password and username are required")
+    }
+    
+    if len(creds.Username) < 3 || len(creds.Username) > 50 {
+        return nil, errors.New("username must be between 3 and 50 characters")
+    }
 
-	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(creds.Password), bcrypt.DefaultCost)
-	if err != nil {
-		return nil, errors.New("could not hash password")
-	}
+    hashedPassword, err := bcrypt.GenerateFromPassword([]byte(creds.Password), bcrypt.DefaultCost)
+    if err != nil {
+        return nil, errors.New("could not hash password")
+    }
 
-	_, err = s.repo.CreateUserWithEmail(ctx, creds.Email, creds.Username, string(hashedPassword))
-	if err != nil {
-		return nil, err
-	}
+    userID, err := s.repo.CreateUserWithEmail(ctx, creds.Email, creds.Username, string(hashedPassword))
+    if err != nil {
+        return nil, fmt.Errorf("could not create user: %w", err)
+    }
 
-	return &domain.AuthResponse{
-		Success: true,
-		Message: "User registered successfully",
-	}, nil
+    return &domain.AuthResponse{
+        Success: true,
+        Message: "User registered successfully",
+        UserID:  userID,
+        Email:   creds.Email,
+        Username: creds.Username,
+    }, nil
 }
-
 func (s *AuthServiceImpl) LoginWithEmail(ctx context.Context, creds domain.UserCredentials) (*domain.AuthResponse, error) {
 	if creds.Email == "" || creds.Password == "" {
 		return nil, errors.New("email and password are required")

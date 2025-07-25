@@ -3,7 +3,7 @@ package application
 
 import (
 	"errors"
-	"net/http"
+	
 
 	"github.com/gin-gonic/gin"
 	"github.com/vicpoo/apigestion-solar-go/src/login/domain"
@@ -17,22 +17,19 @@ func NewAuthHandlers(service domain.AuthService) *AuthHandlers {
 	return &AuthHandlers{service: service}
 }
 
-func (h *AuthHandlers) RegisterEmail(c *gin.Context) {
-	var creds domain.UserCredentials
-	if err := c.ShouldBindJSON(&creds); err != nil {
-		respondWithError(c, http.StatusBadRequest, "Invalid request payload")
-		return
-	}
+func (h *AuthHandlers) RegisterEmail(c *gin.Context) (*domain.AuthResponse, error) {
+    var creds domain.UserCredentials
+    if err := c.ShouldBindJSON(&creds); err != nil {
+        return nil, errors.New("invalid request payload")
+    }
 
-	response, err := h.service.RegisterWithEmail(c.Request.Context(), creds)
-	if err != nil {
-		respondWithError(c, http.StatusInternalServerError, err.Error())
-		return
-	}
+    response, err := h.service.RegisterWithEmail(c.Request.Context(), creds)
+    if err != nil {
+        return nil, err
+    }
 
-	c.JSON(http.StatusCreated, response)
+    return response, nil
 }
-
 func (h *AuthHandlers) LoginEmail(c *gin.Context) (*domain.AuthResponse, error) {
 	var creds domain.UserCredentials
 	if err := c.ShouldBindJSON(&creds); err != nil {

@@ -66,14 +66,14 @@ type AuthResponse struct {
 type UserCredentials struct {
     Email    string `json:"email"`
     Password string `json:"password"`
-    Username string `json:"username,omitempty"`
+     Username string `json:"username" binding:"required,min=3,max=50"`
 }
 
 type User struct {
     ID        int64     `json:"id"`
     UID       string    `json:"uid,omitempty"`
     Email     string    `json:"email"`
-    Username  string    `json:"username,omitempty"`
+    Username  string    `json:"username"`
     AuthType  string    `json:"auth_type"`
     IsActive  bool      `json:"is_active"`
     IsAdmin   bool      `json:"is_admin"`

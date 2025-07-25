@@ -175,9 +175,32 @@ func (c *LoginController) LoginEmail(ctx *gin.Context) {
     })
 }
 func (c *LoginController) RegisterEmail(ctx *gin.Context) {
-	c.authHandlers.RegisterEmail(ctx)
-}
+    var creds domain.UserCredentials
+    if err := ctx.ShouldBindJSON(&creds); err != nil {
+        ctx.JSON(http.StatusBadRequest, gin.H{
+            "error": "Invalid request payload",
+            "details": err.Error(),
+        })
+        return
+    }
 
+    // Ahora RegisterEmail devuelve valores
+    response, err := c.authHandlers.RegisterEmail(ctx)
+    if err != nil {
+        ctx.JSON(http.StatusBadRequest, gin.H{
+            "error": err.Error(),
+        })
+        return
+    }
+
+    ctx.JSON(http.StatusCreated, gin.H{
+        "success": response.Success,
+        "message": response.Message,
+        "user_id": response.UserID,
+        "email":   response.Email,
+        "username": response.Username,
+    })
+}
 func (c *LoginController) GoogleAuth(ctx *gin.Context) {
     response, err := c.authHandlers.GoogleAuth(ctx)
     if err != nil {

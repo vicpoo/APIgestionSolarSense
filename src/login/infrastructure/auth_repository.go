@@ -24,6 +24,16 @@ func (r *AuthRepositoryImpl) CreateUserWithEmail(ctx context.Context, email, use
     }
     defer tx.Rollback()
 
+    // Verificar si el username ya existe
+    var usernameCount int
+    err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM users WHERE username = ?", username).Scan(&usernameCount)
+    if err != nil {
+        return 0, fmt.Errorf("could not check username existence: %w", err)
+    }
+    if usernameCount > 0 {
+        return 0, fmt.Errorf("username already in use")
+    }
+
     // Insertar en users
     res, err := tx.ExecContext(ctx,
         `INSERT INTO users (email, display_name, username, password_hash, auth_type, created_at, last_login, is_active) 
@@ -53,7 +63,6 @@ func (r *AuthRepositoryImpl) CreateUserWithEmail(ctx context.Context, email, use
 
     return userID, nil
 }
-
 func (r *AuthRepositoryImpl) FindUserByEmail(ctx context.Context, email string) (*domain.User, string, error) {
     var user domain.User
     var passwordHash string
