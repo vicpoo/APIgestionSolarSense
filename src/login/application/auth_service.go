@@ -9,11 +9,36 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/vicpoo/apigestion-solar-go/src/login/domain"
 	"golang.org/x/crypto/bcrypt"
 )
 
+const (
+    jwtSecret = "d3c8f2b9e7a14b0f932c0d7d9a7e4f5d6c1a2e8b9f3c4a6e7b1d0f4c9a5e6b7" // Cambia esto en producción
+)
+type JWTClaims struct {
+    UserID   int64  `json:"user_id"`
+    Email    string `json:"email"`
+    AuthType string `json:"auth_type"`
+    jwt.RegisteredClaims
+}
+
+func generateJWTToken(user *domain.User) (string, error) {
+    claims := JWTClaims{
+        UserID:   user.ID,
+        Email:    user.Email,
+        AuthType: "email",
+        RegisteredClaims: jwt.RegisteredClaims{
+            ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+        },
+    }
+    
+    token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+    return token.SignedString([]byte(jwtSecret))
+}
 type AuthServiceImpl struct {
 	repo domain.AuthRepository
 }
@@ -62,10 +87,19 @@ func (s *AuthServiceImpl) LoginWithEmail(ctx context.Context, creds domain.UserC
         return nil, errors.New("could not update last login")
     }
 
+    token, err := generateJWTToken(user)
+    if err != nil {
+        return nil, errors.New("could not generate token")
+    }
+
     return &domain.AuthResponse{
-        Success: true,
-        Message: "Login successful",
-        // El token ahora se genera en el controlador
+        Success:  true,
+        Message:  "Login successful",
+        Token:    token,
+        AuthType: "email",
+        UserID:   user.ID,
+        Email:    user.Email,
+        Username: user.Username,
     }, nil
 }
 

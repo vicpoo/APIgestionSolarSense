@@ -8,10 +8,13 @@ type AuthResponse struct {
     Message  string `json:"message,omitempty"`
     Error    string `json:"error,omitempty"`
     Token    string `json:"token,omitempty"`
-    AuthType string `json:"auth_type,omitempty"` // "email" o "google"
+    AuthType string `json:"auth_type,omitempty"`
     UserID   int64  `json:"user_id,omitempty"`
+    Email    string `json:"email,omitempty"`
+    Username string `json:"username,omitempty"`
     IsAdmin  bool   `json:"is_admin,omitempty"`
 }
+
 
 type UserCredentials struct {
 	Email    string `json:"email"`

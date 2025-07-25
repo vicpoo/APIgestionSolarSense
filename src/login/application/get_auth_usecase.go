@@ -4,6 +4,7 @@ package application
 
 import (
 	"context"
+
 	"github.com/vicpoo/apigestion-solar-go/src/login/domain"
 )
 
@@ -24,13 +25,13 @@ func (uc *GetAuthUseCase) GetUserByEmail(ctx context.Context, email string) (*do
 }
 
 func (uc *GetAuthUseCase) GetAllUsers(ctx context.Context) ([]*domain.User, error) {
-    return uc.repo.GetAllUsers(ctx)
+	return uc.repo.GetAllUsers(ctx)
 }
 
 func (uc *GetAuthUseCase) GetUserByID(ctx context.Context, userID int64) (*domain.User, error) {
-    return uc.repo.GetUserByID(ctx, userID)
+	return uc.repo.GetUserByID(ctx, userID)
 }
 
 func (uc *GetAuthUseCase) GetUserMembershipType(ctx context.Context, userID int64) (string, error) {
-    return uc.repo.GetUserMembershipType(ctx, userID)
+	return uc.repo.GetUserMembershipType(ctx, userID)
 }

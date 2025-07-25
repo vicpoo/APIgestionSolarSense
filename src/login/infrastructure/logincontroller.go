@@ -2,9 +2,11 @@
 package infrastructure
 
 import (
+	"fmt"
 	"net/http"
 	"strconv"
 
+	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
 	"github.com/vicpoo/apigestion-solar-go/src/login/application"
 	"github.com/vicpoo/apigestion-solar-go/src/login/domain"
@@ -33,23 +35,34 @@ func NewLoginController(
 		getAuthHandler: getAuthHandler,
 	}
 }
-
+// En logincontroller.go
 func (c *LoginController) GetCurrentUser(ctx *gin.Context) {
-	userEmail, exists := ctx.Get("userEmail")
-	if !exists {
-		ctx.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-		return
-	}
+    // Obtener el ID del usuario de la sesión
+    userID, exists := ctx.Get("userID")
+    if !exists {
+        ctx.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+        return
+    }
 
-	user, err := c.getUseCase.GetUserByEmail(ctx.Request.Context(), userEmail.(string))
-	if err != nil {
-		ctx.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
-		return
-	}
+    // Convertir a int64
+    id, ok := userID.(int64)
+    if !ok {
+        ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
+        return
+    }
 
-	ctx.JSON(http.StatusOK, user)
+    // Obtener los datos del usuario
+    user, err := c.getUseCase.GetUserByID(ctx.Request.Context(), id)
+    if err != nil {
+        ctx.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+        return
+    }
+
+    // Mostrar en consola
+    fmt.Printf("Consultando datos del usuario - ID: %d, Email: %s\n", user.ID, user.Email)
+
+    ctx.JSON(http.StatusOK, user)
 }
-
 func (c *LoginController) UpdateUserEmail(ctx *gin.Context) {
 	userEmail, exists := ctx.Get("userEmail")
 	if !exists {
@@ -112,7 +125,6 @@ func (c *LoginController) UpdatePassword(ctx *gin.Context) {
 func (c *LoginController) RegisterEmail(ctx *gin.Context) {
 	c.authHandlers.RegisterEmail(ctx)
 }
-
 func (c *LoginController) LoginEmail(ctx *gin.Context) {
     response, err := c.authHandlers.LoginEmail(ctx)
     if err != nil {
@@ -123,28 +135,37 @@ func (c *LoginController) LoginEmail(ctx *gin.Context) {
     var creds domain.UserCredentials
     if err := ctx.ShouldBindJSON(&creds); err == nil {
         user, err := c.getUseCase.GetUserByEmail(ctx.Request.Context(), creds.Email)
-        if err == nil {
-            membershipType, err := c.getUseCase.GetUserMembershipType(ctx.Request.Context(), user.ID)
-            if err != nil {
-                ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Could not get user membership"})
-                return
-            }
-
-            token, err := GenerateJWTToken(user, membershipType)
-            if err != nil {
-                ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate token"})
-                return
-            }
-            response.Token = token
-            response.AuthType = "email"
-            response.UserID = user.ID
-            response.IsAdmin = membershipType == "admin"
+        if err != nil {
+            ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Could not get user data"})
+            return
         }
+
+        // Establecer la sesión
+        session := sessions.Default(ctx)
+        session.Set("userID", user.ID)
+        if err := session.Save(); err != nil {
+            ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save session"})
+            return
+        }
+
+        // Mostrar en consola
+        fmt.Printf("Usuario logueado - ID: %d, Email: %s\n", user.ID, user.Email)
+
+        // Modificar la respuesta para incluir datos del usuario
+        userResponse := map[string]interface{}{
+            "success":  true,
+            "message":  "Login successful",
+            "user_id":  user.ID,
+            "email":    user.Email,
+            "username": user.Username,
+        }
+        
+        ctx.JSON(http.StatusOK, userResponse)
+        return
     }
     
     ctx.JSON(http.StatusOK, response)
 }
-
 func (c *LoginController) GoogleAuth(ctx *gin.Context) {
     response, err := c.authHandlers.GoogleAuth(ctx)
     if err != nil {
