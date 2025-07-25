@@ -1,10 +1,20 @@
 // api/src/login/domain/entities.go
 package domain
 
-
 import (
+	"errors"
 	"time"
+
 	"github.com/golang-jwt/jwt/v4"
+)
+
+
+
+var (
+    ErrInvalidCredentials  = errors.New("invalid credentials")
+    ErrEmailAlreadyExists  = errors.New("email already exists")
+    ErrUsernameAlreadyExists = errors.New("username already exists") // opcional
+    ErrAccountNotActive    = errors.New("account is not active")      // opcional
 )
 
 const JwtSecret = "d3c8f2b9e7a14b0f932c0d7d9a7e4f5d6c1a2e8b9f3c4a6e7b1d0f4c9a5e6b7"

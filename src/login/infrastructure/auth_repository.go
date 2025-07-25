@@ -19,67 +19,81 @@ func NewAuthRepository(db *sql.DB) domain.AuthRepository {
 }
 
 func (r *AuthRepositoryImpl) CreateUserWithEmail(ctx context.Context, email, username, passwordHash string) (int64, error) {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return 0, fmt.Errorf("could not start transaction: %w", err)
-	}
-	defer tx.Rollback()
+    tx, err := r.db.BeginTx(ctx, nil)
+    if err != nil {
+        return 0, fmt.Errorf("could not start transaction: %w", err)
+    }
+    defer tx.Rollback()
 
-	// 1. Verificar si el usuario ya existe
-	var existingID int64
-	err = tx.QueryRowContext(ctx, "SELECT id FROM users WHERE email = ?", email).Scan(&existingID)
-	if err == nil {
-		return 0, fmt.Errorf("user with this email already exists")
-	}
-	if err != nil && err != sql.ErrNoRows {
-		return 0, fmt.Errorf("could not check user existence: %w", err)
-	}
+    // Verificación más robusta de usuario existente
+    var existingCount int
+    err = tx.QueryRowContext(ctx, 
+        `SELECT COUNT(*) FROM users WHERE email = ? OR username = ?`, 
+        email, username).Scan(&existingCount)
+    
+    if err != nil {
+        return 0, fmt.Errorf("could not check user existence: %w", err)
+    }
+    if existingCount > 0 {
+        return 0, domain.ErrEmailAlreadyExists
+    }
 
-	// 2. Insertar en users
-	res, err := tx.ExecContext(ctx,
-		`INSERT INTO users (email, display_name, username, password_hash, auth_type, created_at, last_login, is_active) 
-         VALUES (?, ?, ?, ?, 'email', NOW(), NOW(), 1)`,
-		email, username, username, passwordHash)
-	if err != nil {
-		return 0, fmt.Errorf("could not create user: %w", err)
-	}
+    // Insertar en users
+    res, err := tx.ExecContext(ctx,
+        `INSERT INTO users (email, display_name, username, auth_type, created_at, last_login, is_active) 
+         VALUES (?, ?, ?, 'email', NOW(), NOW(), 1)`,
+        email, username, username)
+    if err != nil {
+        return 0, fmt.Errorf("could not create user: %w", err)
+    }
 
-	userID, err := res.LastInsertId()
-	if err != nil {
-		return 0, fmt.Errorf("could not get user ID: %w", err)
-	}
+    userID, err := res.LastInsertId()
+    if err != nil {
+        return 0, fmt.Errorf("could not get user ID: %w", err)
+    }
 
-	// 3. Insertar membresía solo si no existe
-	_, err = tx.ExecContext(ctx,
-		`INSERT INTO memberships (user_id, type, created_at, updated_at) 
-         VALUES (?, 'free', NOW(), NOW())
-         ON DUPLICATE KEY UPDATE updated_at = NOW()`, // Maneja el caso duplicado
-		userID)
-	if err != nil {
-		return 0, fmt.Errorf("could not create membership: %w", err)
-	}
+    // Insertar en email_auth
+    _, err = tx.ExecContext(ctx,
+        `INSERT INTO email_auth 
+         (user_id, email, password_hash, username, created_at, updated_at) 
+         VALUES (?, ?, ?, ?, NOW(), NOW())`,
+        userID, email, passwordHash, username)
+    if err != nil {
+        return 0, fmt.Errorf("could not save credentials: %w", err)
+    }
 
-	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf("transaction failed: %w", err)
-	}
+    // Insertar membresía
+    _, err = tx.ExecContext(ctx,
+        `INSERT INTO memberships 
+         (user_id, type, created_at, updated_at) 
+         VALUES (?, 'free', NOW(), NOW())`,
+        userID)
+    if err != nil {
+        return 0, fmt.Errorf("could not create membership: %w", err)
+    }
 
-	return userID, nil
+    if err := tx.Commit(); err != nil {
+        return 0, fmt.Errorf("transaction failed: %w", err)
+    }
+
+    return userID, nil
 }
 func (r *AuthRepositoryImpl) FindUserByEmail(ctx context.Context, email string) (*domain.User, string, error) {
     var user domain.User
-    var passwordHash sql.NullString
+    var passwordHash string
     var isAdmin bool
 
+    // Consulta mejorada con INNER JOIN para garantizar consistencia
     err := r.db.QueryRowContext(ctx,
         `SELECT 
             u.id, 
             u.email, 
-            COALESCE(ea.username, u.username) as username,
+            u.username,
             ea.password_hash,
             CASE WHEN m.type = 'admin' THEN 1 ELSE 0 END as is_admin,
             u.is_active
          FROM users u
-         LEFT JOIN email_auth ea ON (u.id = ea.user_id OR u.email = ea.email)
+         INNER JOIN email_auth ea ON u.id = ea.user_id
          LEFT JOIN memberships m ON u.id = m.user_id
          WHERE u.email = ? AND u.auth_type = 'email'`,
         email,
@@ -94,18 +108,18 @@ func (r *AuthRepositoryImpl) FindUserByEmail(ctx context.Context, email string) 
 
     if err != nil {
         if err == sql.ErrNoRows {
-            return nil, "", errors.New("user not found")
+            return nil, "", domain.ErrInvalidCredentials
         }
         return nil, "", fmt.Errorf("database error: %v", err)
     }
 
-    if !passwordHash.Valid {
-        return nil, "", errors.New("no password set for this user")
+    if !user.IsActive {
+        return nil, "", errors.New("account is not active")
     }
 
     user.AuthType = "email"
     user.IsAdmin = isAdmin
-    return &user, passwordHash.String, nil
+    return &user, passwordHash, nil
 }
 func (r *AuthRepositoryImpl) FindUserByID(ctx context.Context, id int64) (*domain.User, string, error) {
 	var user domain.User

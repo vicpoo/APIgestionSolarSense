@@ -3,13 +3,13 @@ package infrastructure
 
 import (
 	"log"
-	"time"
+	
 
 	"net/http"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v4"
+
 	"github.com/vicpoo/apigestion-solar-go/src/core"
 	"github.com/vicpoo/apigestion-solar-go/src/login/application"
 	"github.com/vicpoo/apigestion-solar-go/src/login/domain"
@@ -135,47 +135,36 @@ func (c *LoginController) LoginEmail(ctx *gin.Context) {
 
     log.Printf("Intento de login con email: '%s'", creds.Email)
 
-    // Buscar usuario
     user, passwordHash, err := c.getUseCase.Repo.FindUserByEmail(ctx.Request.Context(), creds.Email)
     if err != nil {
-        log.Printf("Error al buscar usuario: %v", err)
+        log.Printf("Error de autenticación para %s: %v", creds.Email, err)
         ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
         return
     }
 
-    log.Printf("Usuario encontrado. Comparando contraseñas...")
-
-    // Verificar contraseña
-    err = bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(creds.Password))
-    if err != nil {
-        log.Printf("Error al comparar contraseñas: %v", err)
+    // Verificación detallada de contraseña
+    if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(creds.Password)); err != nil {
+        log.Printf("Error en contraseña para usuario %d: %v", user.ID, err)
         ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
         return
+    }
+
+    // Actualizar último login
+    if err := c.getUseCase.Repo.UpdateLastLogin(ctx.Request.Context(), user.ID); err != nil {
+        log.Printf("Error actualizando last_login para %d: %v", user.ID, err)
     }
 
     // Generar token
-    claims := core.JWTClaims{
-        UserID:   user.ID,
-        Email:    user.Email,
-        Username: user.Username,
-        AuthType: user.AuthType,
-        IsAdmin:  user.IsAdmin,
-        RegisteredClaims: jwt.RegisteredClaims{
-            ExpiresAt: jwt.NewNumericDate(time.Now().Add(48 * time.Hour)),
-            IssuedAt:  jwt.NewNumericDate(time.Now()),
-        },
-    }
-
-    token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-    tokenString, err := token.SignedString([]byte(core.JwtSecret))
+    token, err := domain.GenerateJWTToken(user)
     if err != nil {
+        log.Printf("Error generando token para %d: %v", user.ID, err)
         ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate token"})
         return
     }
 
     ctx.JSON(http.StatusOK, gin.H{
         "success": true,
-        "token":   tokenString,
+        "token":   token,
         "user": gin.H{
             "id":       user.ID,
             "email":    user.Email,

@@ -2,11 +2,12 @@
 package infrastructure
 
 import (
-    "net/http"
-    "strings"
+	"net/http"
+	"strings"
 
-    "github.com/gin-gonic/gin"
-    "github.com/vicpoo/apigestion-solar-go/src/core"
+	"github.com/gin-gonic/gin"
+	"github.com/vicpoo/apigestion-solar-go/src/core"
+	"github.com/vicpoo/apigestion-solar-go/src/login/domain"
 )
 
 func AuthMiddleware() gin.HandlerFunc {
@@ -18,18 +19,19 @@ func AuthMiddleware() gin.HandlerFunc {
         }
 
         tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-        if tokenString == authHeader {
-            c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization format"})
-            return
-        }
-
-        claims, err := ValidateJWTToken(tokenString)
+        claims, err := domain.ValidateJWTToken(tokenString)
         if err != nil {
-            c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token: " + err.Error()})
+            c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
             return
         }
 
-        c.Set("jwtClaims", claims)
+        // Verificar que el usuario aún existe
+        if _, err := c.MustGet("authRepository").(domain.AuthRepository).GetUserByID(c.Request.Context(), claims.UserID); err != nil {
+            c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "User no longer exists"})
+            return
+        }
+
+        c.Set("userClaims", claims)
         c.Next()
     }
 }
