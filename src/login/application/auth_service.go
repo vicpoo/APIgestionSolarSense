@@ -22,12 +22,12 @@ func NewAuthService(repo domain.AuthRepository) domain.AuthService {
 }
 
 func (s *AuthServiceImpl) RegisterWithEmail(ctx context.Context, creds domain.UserCredentials) (*domain.AuthResponse, error) {
-    if creds.Email == "" || creds.Password == "" || creds.Username == "" {
-        return nil, errors.New("email, password and username are required")
+    // Validaciones adicionales
+    if len(creds.Password) < 8 {
+        return nil, errors.New("password must be at least 8 characters")
     }
-    
-    if len(creds.Username) < 3 || len(creds.Username) > 50 {
-        return nil, errors.New("username must be between 3 and 50 characters")
+    if len(creds.Username) < 3 {
+        return nil, errors.New("username must be at least 3 characters")
     }
 
     hashedPassword, err := bcrypt.GenerateFromPassword([]byte(creds.Password), bcrypt.DefaultCost)
@@ -37,7 +37,7 @@ func (s *AuthServiceImpl) RegisterWithEmail(ctx context.Context, creds domain.Us
 
     userID, err := s.repo.CreateUserWithEmail(ctx, creds.Email, creds.Username, string(hashedPassword))
     if err != nil {
-        return nil, fmt.Errorf("could not create user: %w", err)
+        return nil, fmt.Errorf("registration failed: %w", err)
     }
 
     return &domain.AuthResponse{

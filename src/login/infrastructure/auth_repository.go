@@ -24,17 +24,17 @@ func (r *AuthRepositoryImpl) CreateUserWithEmail(ctx context.Context, email, use
     }
     defer tx.Rollback()
 
-    // Verificar si el username ya existe
-    var usernameCount int
-    err = tx.QueryRowContext(ctx, "SELECT COUNT(*) FROM users WHERE username = ?", username).Scan(&usernameCount)
-    if err != nil {
-        return 0, fmt.Errorf("could not check username existence: %w", err)
+    // 1. Verificar si el usuario ya existe
+    var existingID int64
+    err = tx.QueryRowContext(ctx, "SELECT id FROM users WHERE email = ?", email).Scan(&existingID)
+    if err == nil {
+        return 0, fmt.Errorf("user with this email already exists")
     }
-    if usernameCount > 0 {
-        return 0, fmt.Errorf("username already in use")
+    if err != nil && err != sql.ErrNoRows {
+        return 0, fmt.Errorf("could not check user existence: %w", err)
     }
 
-    // Insertar en users
+    // 2. Insertar en users
     res, err := tx.ExecContext(ctx,
         `INSERT INTO users (email, display_name, username, password_hash, auth_type, created_at, last_login, is_active) 
          VALUES (?, ?, ?, ?, 'email', NOW(), NOW(), 1)`,
@@ -48,13 +48,14 @@ func (r *AuthRepositoryImpl) CreateUserWithEmail(ctx context.Context, email, use
         return 0, fmt.Errorf("could not get user ID: %w", err)
     }
 
-    // Insertar membresía por defecto
+    // 3. Insertar membresía solo si no existe
     _, err = tx.ExecContext(ctx,
         `INSERT INTO memberships (user_id, type, created_at, updated_at) 
-         VALUES (?, 'free', NOW(), NOW())`,
+         VALUES (?, 'free', NOW(), NOW())
+         ON DUPLICATE KEY UPDATE updated_at = NOW()`, // Maneja el caso duplicado
         userID)
     if err != nil {
-        return 0, fmt.Errorf("could not create default membership: %w", err)
+        return 0, fmt.Errorf("could not create membership: %w", err)
     }
 
     if err := tx.Commit(); err != nil {

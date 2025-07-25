@@ -66,9 +66,8 @@ type AuthResponse struct {
 type UserCredentials struct {
     Email    string `json:"email"`
     Password string `json:"password"`
-     Username string `json:"username" binding:"required,min=3,max=50"`
+    Username string `json:"username"`
 }
-
 type User struct {
     ID        int64     `json:"id"`
     UID       string    `json:"uid,omitempty"`

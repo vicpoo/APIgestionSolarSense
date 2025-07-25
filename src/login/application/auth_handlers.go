@@ -2,8 +2,11 @@
 package application
 
 import (
-	"errors"
 	
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
 
 	"github.com/gin-gonic/gin"
 	"github.com/vicpoo/apigestion-solar-go/src/login/domain"
@@ -18,17 +21,37 @@ func NewAuthHandlers(service domain.AuthService) *AuthHandlers {
 }
 
 func (h *AuthHandlers) RegisterEmail(c *gin.Context) (*domain.AuthResponse, error) {
-    var creds domain.UserCredentials
-    if err := c.ShouldBindJSON(&creds); err != nil {
-        return nil, errors.New("invalid request payload")
+    // 1. Verificar el Content-Type
+    if c.ContentType() != "application/json" {
+        return nil, errors.New("content-type must be application/json")
     }
 
-    response, err := h.service.RegisterWithEmail(c.Request.Context(), creds)
+    // 2. Leer el cuerpo manualmente
+    body, err := io.ReadAll(c.Request.Body)
     if err != nil {
-        return nil, err
+        return nil, fmt.Errorf("error reading request body: %v", err)
+    }
+    defer c.Request.Body.Close()
+
+    // 3. Parsear manualmente el JSON
+    var creds domain.UserCredentials
+    if err := json.Unmarshal(body, &creds); err != nil {
+        return nil, fmt.Errorf("invalid JSON format: %v", err)
     }
 
-    return response, nil
+    // 4. Validaciones manuales
+    if creds.Email == "" {
+        return nil, errors.New("email is required")
+    }
+    if creds.Password == "" {
+        return nil, errors.New("password is required")
+    }
+    if creds.Username == "" {
+        return nil, errors.New("username is required")
+    }
+
+    // 5. Llamar al servicio
+    return h.service.RegisterWithEmail(c.Request.Context(), creds)
 }
 func (h *AuthHandlers) LoginEmail(c *gin.Context) (*domain.AuthResponse, error) {
 	var creds domain.UserCredentials
