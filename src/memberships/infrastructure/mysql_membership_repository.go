@@ -305,20 +305,27 @@ func (r *MySQLMembershipRepository) RegisterUser(ctx context.Context, email, use
     }
     defer tx.Rollback()
 
-    // Verificar si el usuario ya existe
+    // Verificar si el usuario ya existe por email o username
     var existingUserID int64
-    err = tx.QueryRowContext(ctx, "SELECT id FROM users WHERE email = ?", email).Scan(&existingUserID)
+    err = tx.QueryRowContext(ctx, 
+        "SELECT id FROM users WHERE email = ? OR username = ?", 
+        email, username).Scan(&existingUserID)
+    
     if err == nil {
-        return 0, fmt.Errorf("user already exists")
+        return 0, domain.ErrEmailAlreadyExists
     }
     if err != nil && err != sql.ErrNoRows {
         return 0, fmt.Errorf("could not check existing user: %w", err)
     }
 
+    // Insertar usuario con ON DUPLICATE KEY UPDATE
     res, err := tx.ExecContext(ctx,
-        `INSERT INTO users (email, display_name, username, auth_type, created_at, last_login) 
-         VALUES (?, ?, ?, 'email', NOW(), NOW())`,
+        `INSERT INTO users (email, display_name, username, auth_type, created_at) 
+         VALUES (?, ?, ?, 'email', NOW())
+         ON DUPLICATE KEY UPDATE 
+         last_login = NOW()`,
         email, username, username)
+    
     if err != nil {
         return 0, fmt.Errorf("could not create user: %w", err)
     }
@@ -328,20 +335,27 @@ func (r *MySQLMembershipRepository) RegisterUser(ctx context.Context, email, use
         return 0, fmt.Errorf("could not get user ID: %w", err)
     }
 
+    // Insertar credenciales con ON DUPLICATE KEY
     _, err = tx.ExecContext(ctx,
         `INSERT INTO email_auth 
-         (user_id, email, password_hash, username, created_at, updated_at) 
-         VALUES (?, ?, ?, ?, NOW(), NOW())`,
+         (user_id, email, password_hash, username, created_at) 
+         VALUES (?, ?, ?, ?, NOW())
+         ON DUPLICATE KEY UPDATE
+         password_hash = VALUES(password_hash),
+         updated_at = NOW()`,
         userID, email, passwordHash, username)
+    
     if err != nil {
         return 0, fmt.Errorf("could not save credentials: %w", err)
     }
 
+    // Insertar membresía con ON DUPLICATE KEY IGNORE
     _, err = tx.ExecContext(ctx,
-        `INSERT INTO memberships 
+        `INSERT IGNORE INTO memberships 
          (user_id, type, extra_storage, created_at) 
          VALUES (?, 'free', false, NOW())`,
         userID)
+    
     if err != nil {
         return 0, fmt.Errorf("could not create membership: %w", err)
     }

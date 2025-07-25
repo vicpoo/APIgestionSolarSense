@@ -2,9 +2,11 @@
 package infrastructure
 
 import (
-    "net/http"
-    "github.com/gin-gonic/gin"
-    "github.com/vicpoo/apigestion-solar-go/src/memberships/application"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+	"github.com/vicpoo/apigestion-solar-go/src/memberships/application"
+	"github.com/vicpoo/apigestion-solar-go/src/memberships/domain"
 )
 
 type RegisterHandler struct {
@@ -18,18 +20,22 @@ func NewRegisterHandler(useCase *application.RegisterUseCase) *RegisterHandler {
 func (h *RegisterHandler) RegisterUser(c *gin.Context) {
     var request struct {
         Email    string `json:"email" binding:"required,email"`
-        Username string `json:"username" binding:"required"`
-        Password string `json:"password" binding:"required,min=6"`
+        Username string `json:"username" binding:"required,min=3"`
+        Password string `json:"password" binding:"required,min=8"`
     }
 
     if err := c.ShouldBindJSON(&request); err != nil {
-        c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+        c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request data"})
         return
     }
 
     userID, err := h.useCase.RegisterUser(c.Request.Context(), request.Email, request.Username, request.Password)
     if err != nil {
-        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        status := http.StatusInternalServerError
+        if err == domain.ErrEmailAlreadyExists {
+            status = http.StatusConflict
+        }
+        c.JSON(status, gin.H{"error": err.Error()})
         return
     }
 
