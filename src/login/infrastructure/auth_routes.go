@@ -27,31 +27,20 @@ func InitAuthRoutes(router *gin.Engine) {
 	)
 	
 	authGroup := router.Group("/api/auth")
-	{
-		authGroup.POST("/email/register", loginController.RegisterEmail)
-		authGroup.POST("/email/login", loginController.LoginEmail)
-		authGroup.POST("/google", loginController.GoogleAuth)
-		
-		protected := authGroup.Group("")
-		protected.Use(AuthMiddleware())
-		{
-			emailGroup := protected.Group("")
-			emailGroup.Use(EmailUserMiddleware())
-			{
-				emailGroup.PUT("/email", loginController.UpdateUserEmail)
-				emailGroup.PUT("/password", loginController.UpdatePassword)
-			}
-			
-			protected.GET("/me", loginController.GetCurrentUser)
-			protected.DELETE("/account", loginController.DeleteAccount)
-			protected.DELETE("/account/:id", loginController.DeleteAccount)
-		}
-		
-		adminGroup := protected.Group("")
-		adminGroup.Use(AdminMiddleware())
-		{
-			adminGroup.GET("/users", loginController.GetAllUsers)
-			adminGroup.GET("/users/:id", loginController.GetUserByID)
-		}
-	}
+    {
+        authGroup.POST("/email/register", loginController.RegisterEmail)
+        authGroup.POST("/email/login", loginController.LoginEmail)
+        authGroup.POST("/google", loginController.GoogleAuth)
+        
+        // Endpoints que antes estaban protegidos
+        authGroup.GET("/me", loginController.GetCurrentUser)
+        authGroup.PUT("/email", loginController.UpdateUserEmail)
+        authGroup.PUT("/password", loginController.UpdatePassword)
+        authGroup.DELETE("/account", loginController.DeleteAccount)
+        authGroup.DELETE("/account/:id", loginController.DeleteAccount)
+        
+        // Endpoints de admin
+        authGroup.GET("/users", loginController.GetAllUsers)
+        authGroup.GET("/users/:id", loginController.GetUserByID)
+    }
 }
