@@ -328,16 +328,6 @@ func (r *MySQLMembershipRepository) RegisterUser(ctx context.Context, email, use
         return 0, fmt.Errorf("could not get user ID: %w", err)
     }
 
-    // Verificar si ya existe una membresía para este usuario
-    var membershipExists int
-    err = tx.QueryRowContext(ctx, "SELECT 1 FROM memberships WHERE user_id = ?", userID).Scan(&membershipExists)
-    if err == nil {
-        return 0, fmt.Errorf("membership already exists for user")
-    }
-    if err != nil && err != sql.ErrNoRows {
-        return 0, fmt.Errorf("could not check existing membership: %w", err)
-    }
-
     _, err = tx.ExecContext(ctx,
         `INSERT INTO email_auth 
          (user_id, email, password_hash, username, created_at, updated_at) 
