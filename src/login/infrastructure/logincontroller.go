@@ -129,31 +129,31 @@ func (c *LoginController) UpdatePassword(ctx *gin.Context) {
 func (c *LoginController) LoginEmail(ctx *gin.Context) {
     var creds domain.UserCredentials
     if err := ctx.ShouldBindJSON(&creds); err != nil {
-        log.Printf("Error binding JSON: %v", err)
         ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
         return
     }
-     log.Printf("Intento de login con email: '%s'", creds.Email)
 
-    // Buscar usuario directamente en la base de datos
+    log.Printf("Intento de login con email: '%s'", creds.Email)
+
+    // Buscar usuario
     user, passwordHash, err := c.getUseCase.Repo.FindUserByEmail(ctx.Request.Context(), creds.Email)
     if err != nil {
-        ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
-        return
-    }
-    log.Printf("Usuario encontrado. Comparando hash: %s con password: %s", passwordHash, creds.Password)
-    // Verificar contraseña CON bcrypt
-    if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(creds.Password)); err != nil {
-          log.Printf("Error comparando contraseñas: %v", err)
+        log.Printf("Error al buscar usuario: %v", err)
         ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
         return
     }
 
-    // Configurar zona horaria de México
-    loc, _ := time.LoadLocation("America/Mexico_City")
-    now := time.Now().In(loc)
-    
-    // Generar token que expire en 48 horas
+    log.Printf("Usuario encontrado. Comparando contraseñas...")
+
+    // Verificar contraseña
+    err = bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(creds.Password))
+    if err != nil {
+        log.Printf("Error al comparar contraseñas: %v", err)
+        ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
+        return
+    }
+
+    // Generar token
     claims := core.JWTClaims{
         UserID:   user.ID,
         Email:    user.Email,
@@ -161,8 +161,8 @@ func (c *LoginController) LoginEmail(ctx *gin.Context) {
         AuthType: user.AuthType,
         IsAdmin:  user.IsAdmin,
         RegisteredClaims: jwt.RegisteredClaims{
-            ExpiresAt: jwt.NewNumericDate(now.Add(48 * time.Hour)),
-            IssuedAt:  jwt.NewNumericDate(now),
+            ExpiresAt: jwt.NewNumericDate(time.Now().Add(48 * time.Hour)),
+            IssuedAt:  jwt.NewNumericDate(time.Now()),
         },
     }
 
@@ -173,16 +173,15 @@ func (c *LoginController) LoginEmail(ctx *gin.Context) {
         return
     }
 
-    // Respuesta simplificada
     ctx.JSON(http.StatusOK, gin.H{
-        "success":  true,
-        "message":  "Login successful",
-        "token":    tokenString,
-        "user_id":  user.ID,
-        "email":    user.Email,
-        "username": user.Username,
-        "role":     "admin", // O puedes usar user.IsAdmin para determinar el rol
-        "expires_at": now.Add(48 * time.Hour).Format(time.RFC3339),
+        "success": true,
+        "token":   tokenString,
+        "user": gin.H{
+            "id":       user.ID,
+            "email":    user.Email,
+            "username": user.Username,
+            "is_admin": user.IsAdmin,
+        },
     })
 }
 func (c *LoginController) RegisterEmail(ctx *gin.Context) {

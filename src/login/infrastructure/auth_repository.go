@@ -70,24 +70,32 @@ func (r *AuthRepositoryImpl) FindUserByEmail(ctx context.Context, email string) 
     var passwordHash string
     var isAdmin bool
 
-    // Consulta mejorada que verifica ambas tablas
+    // Consulta mejorada con JOIN explícito y manejo de errores
     err := r.db.QueryRowContext(ctx,
-        `SELECT u.id, u.email, u.username, ea.password_hash, 
+        `SELECT u.id, u.email, COALESCE(ea.username, u.username) as username, 
+         ea.password_hash, 
          CASE WHEN m.type = 'admin' THEN 1 ELSE 0 END as is_admin,
          u.is_active
          FROM users u
-         JOIN email_auth ea ON u.id = ea.user_id
+         LEFT JOIN email_auth ea ON u.id = ea.user_id
          LEFT JOIN memberships m ON u.id = m.user_id
          WHERE u.email = ? AND u.auth_type = 'email'`,
         email,
     ).Scan(&user.ID, &user.Email, &user.Username, &passwordHash, &isAdmin, &user.IsActive)
 
     if err != nil {
-        return nil, "", fmt.Errorf("invalid email or password: %v", err)
+        if err == sql.ErrNoRows {
+            return nil, "", errors.New("user not found")
+        }
+        return nil, "", fmt.Errorf("database error: %v", err)
     }
 
     if !user.IsActive {
         return nil, "", errors.New("account is not active")
+    }
+
+    if passwordHash == "" {
+        return nil, "", errors.New("no password set for this user")
     }
 
     user.AuthType = "email"
