@@ -1,46 +1,18 @@
-//api/src/login/application/auth_service.go
+// api/src/login/application/auth_service.go
 package application
 
 import (
-    "context"
-    "encoding/base64"
-    "encoding/json"
-    "errors"
-    "fmt"
-    "strings"
-    "time"
+	"context"
+	"encoding/base64"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"strings"
 
-    "github.com/golang-jwt/jwt/v4"
-    "github.com/vicpoo/apigestion-solar-go/src/login/domain"
-    "golang.org/x/crypto/bcrypt"
+	"github.com/vicpoo/apigestion-solar-go/src/login/domain"
+	"golang.org/x/crypto/bcrypt"
 )
 
-const (
-    jwtSecret = "d3c8f2b9e7a14b0f932c0d7d9a7e4f5d6c1a2e8b9f3c4a6e7b1d0f4c9a5e6b7"
-)
-
-type JWTClaims struct {
-    UserID   int64  `json:"user_id"`
-    Email    string `json:"email"`
-    AuthType string `json:"auth_type"`
-    IsAdmin  bool   `json:"is_admin"`
-    jwt.RegisteredClaims
-}
-
-func generateJWTToken(user *domain.User) (string, error) {
-    claims := JWTClaims{
-        UserID:   user.ID,
-        Email:    user.Email,
-        AuthType: user.AuthType,
-        IsAdmin:  user.IsAdmin,
-        RegisteredClaims: jwt.RegisteredClaims{
-            ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
-        },
-    }
-    
-    token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-    return token.SignedString([]byte(jwtSecret))
-}
 type AuthServiceImpl struct {
 	repo domain.AuthRepository
 }
@@ -70,65 +42,63 @@ func (s *AuthServiceImpl) RegisterWithEmail(ctx context.Context, creds domain.Us
 	}, nil
 }
 
-
 func (s *AuthServiceImpl) LoginWithEmail(ctx context.Context, creds domain.UserCredentials) (*domain.AuthResponse, error) {
-    if creds.Email == "" || creds.Password == "" {
-        return nil, errors.New("email and password are required")
-    }
+	if creds.Email == "" || creds.Password == "" {
+		return nil, errors.New("email and password are required")
+	}
 
-    user, passwordHash, err := s.repo.FindUserByEmail(ctx, creds.Email)
-    if err != nil {
-        return nil, errors.New("invalid email or password")
-    }
+	user, passwordHash, err := s.repo.FindUserByEmail(ctx, creds.Email)
+	if err != nil {
+		return nil, errors.New("invalid email or password")
+	}
 
-    if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(creds.Password)); err != nil {
-        return nil, errors.New("invalid email or password")
-    }
+	if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(creds.Password)); err != nil {
+		return nil, errors.New("invalid email or password")
+	}
 
-    if err := s.repo.UpdateLastLogin(ctx, user.ID); err != nil {
-        return nil, errors.New("could not update last login")
-    }
+	if err := s.repo.UpdateLastLogin(ctx, user.ID); err != nil {
+		return nil, errors.New("could not update last login")
+	}
 
-    token, err := generateJWTToken(user)
-    if err != nil {
-        return nil, errors.New("could not generate token")
-    }
+	token, err := domain.GenerateJWTToken(user)
+	if err != nil {
+		return nil, errors.New("could not generate token")
+	}
 
-    return &domain.AuthResponse{
-        Success:  true,
-        Message:  "Login successful",
-        Token:    token,
-        AuthType: "email",
-        UserID:   user.ID,
-        Email:    user.Email,
-        Username: user.Username,
-    }, nil
+	return &domain.AuthResponse{
+		Success:  true,
+		Message:  "Login successful",
+		Token:    token,
+		AuthType: "email",
+		UserID:   user.ID,
+		Email:    user.Email,
+		Username: user.Username,
+		IsAdmin:  user.IsAdmin,
+	}, nil
 }
 
 func (s *AuthServiceImpl) AuthenticateWithGoogle(ctx context.Context, idToken string) (*domain.AuthResponse, error) {
-    userData, err := decodeTokenWithoutVerification(idToken)
-    if err != nil {
-        return nil, errors.New("invalid token")
-    }
+	userData, err := decodeTokenWithoutVerification(idToken)
+	if err != nil {
+		return nil, errors.New("invalid token")
+	}
 
-    if err := s.repo.UpsertGoogleUser(ctx, userData); err != nil {
-        return nil, errors.New("could not save user data")
-    }
+	if err := s.repo.UpsertGoogleUser(ctx, userData); err != nil {
+		return nil, errors.New("could not save user data")
+	}
 
-    return &domain.AuthResponse{
-        Success: true,
-        Message: "Authentication successful",
-        // El token ahora se genera en el controlador
-    }, nil
+	return &domain.AuthResponse{
+		Success: true,
+		Message: "Authentication successful",
+	}, nil
 }
+
 func decodeTokenWithoutVerification(idToken string) (map[string]interface{}, error) {
-	// Dividir el token JWT en sus partes
 	parts := strings.Split(idToken, ".")
 	if len(parts) != 3 {
 		return nil, fmt.Errorf("invalid token format")
 	}
 
-	// Decodificar la parte de los claims (payload)
 	claimsBytes, err := base64.RawURLEncoding.DecodeString(parts[1])
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode token claims")
@@ -139,12 +109,8 @@ func decodeTokenWithoutVerification(idToken string) (map[string]interface{}, err
 		return nil, fmt.Errorf("failed to parse token claims")
 	}
 
-	// Extraer datos del usuario
 	userData := map[string]interface{}{
 		"uid":         claims["sub"],
-
-
-
 		"email":       getClaimValue(claims, "email", ""),
 		"displayName": getClaimValue(claims, "name", ""),
 		"photoURL":    getClaimValue(claims, "picture", ""),

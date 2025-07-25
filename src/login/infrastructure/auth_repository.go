@@ -2,55 +2,56 @@
 package infrastructure
 
 import (
-	"context"
-	"database/sql"
-	"fmt"
+    "context"
+    "database/sql"
+    "fmt"
 
-	"github.com/vicpoo/apigestion-solar-go/src/login/domain"
+    "github.com/vicpoo/apigestion-solar-go/src/login/domain"
 )
 
 type AuthRepositoryImpl struct {
-	db *sql.DB
+    db *sql.DB
 }
 
 func NewAuthRepository(db *sql.DB) domain.AuthRepository {
-	return &AuthRepositoryImpl{db: db}
+    return &AuthRepositoryImpl{db: db}
 }
 
 func (r *AuthRepositoryImpl) CreateUserWithEmail(ctx context.Context, email, username, passwordHash string) (int64, error) {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return 0, fmt.Errorf("could not start transaction: %w", err)
-	}
-	defer tx.Rollback()
+    tx, err := r.db.BeginTx(ctx, nil)
+    if err != nil {
+        return 0, fmt.Errorf("could not start transaction: %w", err)
+    }
+    defer tx.Rollback()
 
-	res, err := tx.ExecContext(ctx,
-		`INSERT INTO users (email, display_name, auth_type, created_at, last_login) 
-		 VALUES (?, ?, 'email', NOW(), NOW())`,
-		email, username)
-	if err != nil {
-		return 0, fmt.Errorf("could not create user: %w", err)
-	}
+    // Insertar en users
+    res, err := tx.ExecContext(ctx,
+        `INSERT INTO users (email, display_name, username, password_hash, auth_type, created_at, last_login, is_active) 
+         VALUES (?, ?, ?, ?, 'email', NOW(), NOW(), 1)`,
+        email, username, username, passwordHash)
+    if err != nil {
+        return 0, fmt.Errorf("could not create user: %w", err)
+    }
 
-	userID, err := res.LastInsertId()
-	if err != nil {
-		return 0, fmt.Errorf("could not get user ID: %w", err)
-	}
+    userID, err := res.LastInsertId()
+    if err != nil {
+        return 0, fmt.Errorf("could not get user ID: %w", err)
+    }
 
-	_, err = tx.ExecContext(ctx,
-		`INSERT INTO email_auth 
-		 (user_id, email, password_hash, username, created_at, updated_at) 
-		 VALUES (?, ?, ?, ?, NOW(), NOW())`,
-		userID, email, passwordHash, username)
-	if err != nil {
-		return 0, fmt.Errorf("could not save credentials: %w", err)
-	}
+    // Insertar membresía por defecto
+    _, err = tx.ExecContext(ctx,
+        `INSERT INTO memberships (user_id, type, created_at, updated_at) 
+         VALUES (?, 'free', NOW(), NOW())`,
+        userID)
+    if err != nil {
+        return 0, fmt.Errorf("could not create default membership: %w", err)
+    }
 
-	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf("transaction failed: %w", err)
-	}
+    if err := tx.Commit(); err != nil {
+        return 0, fmt.Errorf("transaction failed: %w", err)
+    }
 
-	return userID, nil
+    return userID, nil
 }
 
 func (r *AuthRepositoryImpl) FindUserByEmail(ctx context.Context, email string) (*domain.User, string, error) {
@@ -59,12 +60,11 @@ func (r *AuthRepositoryImpl) FindUserByEmail(ctx context.Context, email string) 
     var isAdmin bool
 
     err := r.db.QueryRowContext(ctx,
-        `SELECT ea.user_id, ea.username, ea.password_hash, 
+        `SELECT u.id, u.display_name, u.password_hash, 
          CASE WHEN m.type = 'admin' THEN 1 ELSE 0 END as is_admin
-         FROM email_auth ea
-         JOIN users u ON ea.user_id = u.id
+         FROM users u
          LEFT JOIN memberships m ON u.id = m.user_id
-         WHERE ea.email = ? AND u.auth_type = 'email' AND u.is_active = 1`,
+         WHERE u.email = ? AND u.auth_type = 'email' AND u.is_active = 1`,
         email,
     ).Scan(&user.ID, &user.Username, &passwordHash, &isAdmin)
 
@@ -72,9 +72,12 @@ func (r *AuthRepositoryImpl) FindUserByEmail(ctx context.Context, email string) 
         return nil, "", err
     }
 
+    user.Email = email
+    user.AuthType = "email"
     user.IsAdmin = isAdmin
     return &user, passwordHash, nil
 }
+
 func (r *AuthRepositoryImpl) FindUserByID(ctx context.Context, id int64) (*domain.User, string, error) {
 	var user domain.User
 	var passwordHash string
@@ -192,12 +195,13 @@ func (r *AuthRepositoryImpl) DeleteUserByEmail(ctx context.Context, email string
 }
 
 func (r *AuthRepositoryImpl) GetAllUsers(ctx context.Context) ([]*domain.User, error) {
-	query := `
+    query := `
         SELECT 
             id, 
             uid, 
             email, 
             display_name, 
+            username,
             photo_url, 
             provider, 
             auth_type, 
@@ -205,52 +209,62 @@ func (r *AuthRepositoryImpl) GetAllUsers(ctx context.Context) ([]*domain.User, e
             created_at, 
             last_login
         FROM users
-        ORDER BY id`
+        ORDER BY created_at DESC`
 
-	rows, err := r.db.QueryContext(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("could not get users: %w", err)
-	}
-	defer rows.Close()
+    rows, err := r.db.QueryContext(ctx, query)
+    if err != nil {
+        return nil, fmt.Errorf("could not get users: %w", err)
+    }
+    defer rows.Close()
 
-	var users []*domain.User
-	for rows.Next() {
-		var user domain.User
-		var uid, photoURL sql.NullString
+    var users []*domain.User
+    for rows.Next() {
+        var user domain.User
+        var (
+            uid, username, photoURL sql.NullString
+            lastLogin sql.NullTime  // Para manejar NULL en last_login
+        )
 
-		err := rows.Scan(
-			&user.ID,
-			&uid,
-			&user.Email,
-			&user.Username,
-			&photoURL,
-			&user.Provider,
-			&user.AuthType,
-			&user.IsActive,
-			&user.CreatedAt,
-			&user.LastLogin,
-		)
-		if err != nil {
-			return nil, fmt.Errorf("could not scan user: %w", err)
-		}
+        err := rows.Scan(
+            &user.ID,
+            &uid,
+            &user.Email,
+            &user.Username, // display_name como username
+            &username,
+            &photoURL,
+            &user.Provider,
+            &user.AuthType,
+            &user.IsActive,
+            &user.CreatedAt,
+            &lastLogin,    // Escaneamos como NullTime
+        )
+        if err != nil {
+            return nil, fmt.Errorf("could not scan user: %w", err)
+        }
 
-		if uid.Valid {
-			user.UID = uid.String
-		}
-		if photoURL.Valid {
-			user.PhotoURL = photoURL.String
-		}
+        // Manejar campos NULL
+        if uid.Valid {
+            user.UID = uid.String
+        }
+        if photoURL.Valid {
+            user.PhotoURL = photoURL.String
+        }
+        if !username.Valid {
+            user.Username = "sin_usuario"
+        }
+        if lastLogin.Valid {
+            user.LastLogin = lastLogin.Time
+        }
 
-		users = append(users, &user)
-	}
+        users = append(users, &user)
+    }
 
-	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating users: %w", err)
-	}
+    if err = rows.Err(); err != nil {
+        return nil, fmt.Errorf("error iterating users: %w", err)
+    }
 
-	return users, nil
+    return users, nil
 }
-
 func (r *AuthRepositoryImpl) GetUserByID(ctx context.Context, userID int64) (*domain.User, error) {
 	query := `
         SELECT 

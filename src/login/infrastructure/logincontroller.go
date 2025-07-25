@@ -8,6 +8,7 @@ import (
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/vicpoo/apigestion-solar-go/src/core"
 	"github.com/vicpoo/apigestion-solar-go/src/login/application"
 	"github.com/vicpoo/apigestion-solar-go/src/login/domain"
 )
@@ -37,27 +38,24 @@ func NewLoginController(
 }
 
 func (c *LoginController) GetCurrentUser(ctx *gin.Context) {
-    // Obtener claims del token
     claims, exists := ctx.Get("jwtClaims")
     if !exists {
         ctx.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
         return
     }
 
-    jwtClaims, ok := claims.(*JWTClaims)
+    jwtClaims, ok := claims.(*core.JWTClaims)
     if !ok {
         ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid token claims"})
         return
     }
 
-    // Obtener datos completos del usuario desde la base de datos
     user, err := c.getUseCase.GetUserByID(ctx.Request.Context(), jwtClaims.UserID)
     if err != nil {
         ctx.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
         return
     }
 
-    // Devolver todos los datos del usuario
     ctx.JSON(http.StatusOK, gin.H{
         "user_id":    user.ID,
         "email":      user.Email,
@@ -68,7 +66,6 @@ func (c *LoginController) GetCurrentUser(ctx *gin.Context) {
         "created_at": user.CreatedAt,
     })
 }
-
 func (c *LoginController) UpdateUserEmail(ctx *gin.Context) {
 	userEmail, exists := ctx.Get("userEmail")
 	if !exists {
@@ -219,13 +216,66 @@ func (c *LoginController) GoogleAuth(ctx *gin.Context) {
 }
 
 func (c *LoginController) GetAllUsers(ctx *gin.Context) {
-	c.getAuthHandler.GetAllUsers(ctx)
-}
+    users, err := c.getUseCase.GetAllUsers(ctx.Request.Context())
+    if err != nil {
+        ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Could not retrieve users: " + err.Error()})
+        return
+    }
 
+    // Formatear la respuesta
+    var response []gin.H
+    for _, user := range users {
+        response = append(response, gin.H{
+            "id":         user.ID,
+            "email":      user.Email,
+            "username":   user.Username,
+            "auth_type":  user.AuthType,
+            "is_active":  user.IsActive,
+            "created_at": user.CreatedAt,
+            "last_login": user.LastLogin,
+            "photo_url":  user.PhotoURL,
+        })
+    }
+
+    ctx.JSON(http.StatusOK, gin.H{
+        "success": true,
+        "users":   response,
+    })
+}
 func (c *LoginController) GetUserByID(ctx *gin.Context) {
-	c.getAuthHandler.GetUserByID(ctx)
-}
+    // Verificar permisos de admin
+    isAdmin, exists := ctx.Get("isAdmin")
+    if !exists || !isAdmin.(bool) {
+        ctx.JSON(http.StatusForbidden, gin.H{"error": "Admin privileges required"})
+        return
+    }
 
+    userID, err := strconv.ParseInt(ctx.Param("id"), 10, 64)
+    if err != nil {
+        ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
+        return
+    }
+
+    user, err := c.getUseCase.GetUserByID(ctx.Request.Context(), userID)
+    if err != nil {
+        ctx.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+        return
+    }
+
+    ctx.JSON(http.StatusOK, gin.H{
+        "success": true,
+        "user": gin.H{
+            "id":         user.ID,
+            "email":      user.Email,
+            "username":   user.Username,
+            "auth_type":  user.AuthType,
+            "is_active":  user.IsActive,
+            "created_at": user.CreatedAt,
+            "last_login": user.LastLogin,
+            "photo_url": user.PhotoURL,
+        },
+    })
+}
 func (c *LoginController) DeleteAccount(ctx *gin.Context) {
     userID, exists := ctx.Get("userID")
     if !exists {

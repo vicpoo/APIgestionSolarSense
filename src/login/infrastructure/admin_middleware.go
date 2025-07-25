@@ -2,62 +2,62 @@
 package infrastructure
 
 import (
-	"net/http"
-	"strings"
+    "net/http"
+    "strings"
 
-	"github.com/gin-gonic/gin"
+    "github.com/gin-gonic/gin"
+    "github.com/vicpoo/apigestion-solar-go/src/core"
 )
 
 func AuthMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		authHeader := c.GetHeader("Authorization")
-		if authHeader == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
-			return
-		}
+    return func(c *gin.Context) {
+        authHeader := c.GetHeader("Authorization")
+        if authHeader == "" {
+            c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
+            return
+        }
 
-		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-		if tokenString == authHeader {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization format"})
-			return
-		}
+        tokenString := strings.TrimPrefix(authHeader, "Bearer ")
+        if tokenString == authHeader {
+            c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid authorization format"})
+            return
+        }
 
-		claims, err := ValidateJWTToken(tokenString)
-		if err != nil {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token: " + err.Error()})
-			return
-		}
+        claims, err := ValidateJWTToken(tokenString)
+        if err != nil {
+            c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token: " + err.Error()})
+            return
+        }
 
-		// Guardar los claims en el contexto para su uso posterior
-		c.Set("jwtClaims", claims)
-		c.Next()
-	}
+        c.Set("jwtClaims", claims)
+        c.Next()
+    }
 }
 
 func EmailUserMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		authType, exists := c.Get("authType")
-		if !exists || authType != "email" {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "This endpoint is only for email users"})
-			return
-		}
-		c.Next()
-	}
+    return func(c *gin.Context) {
+        authType, exists := c.Get("authType")
+        if !exists || authType != "email" {
+            c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "This endpoint is only for email users"})
+            return
+        }
+        c.Next()
+    }
 }
 
 func AdminMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		claims, exists := c.Get("jwtClaims")
-		if !exists {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
-			return
-		}
+    return func(c *gin.Context) {
+        claims, exists := c.Get("jwtClaims")
+        if !exists {
+            c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+            return
+        }
 
-		jwtClaims, ok := claims.(*JWTClaims)
-		if !ok || !jwtClaims.IsAdmin {
-			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Admin privileges required"})
-			return
-		}
-		c.Next()
-	}
+        jwtClaims, ok := claims.(*core.JWTClaims)
+        if !ok || !jwtClaims.IsAdmin {
+            c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Admin privileges required"})
+            return
+        }
+        c.Next()
+    }
 }

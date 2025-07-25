@@ -1,3 +1,4 @@
+//src/core/auth_middleware.go
 package core
 
 import (
@@ -6,17 +7,16 @@ import (
 
     "github.com/gin-gonic/gin"
     "github.com/golang-jwt/jwt/v4"
-   
 )
 
-// Mover la constante jwtSecret aquí
-const jwtSecret = "d3c8f2b9e7a14b0f932c0d7d9a7e4f5d6c1a2e8b9f3c4a6e7b1d0f4c9a5e6b7"
+const JwtSecret = "d3c8f2b9e7a14b0f932c0d7d9a7e4f5d6c1a2e8b9f3c4a6e7b1d0f4c9a5e6b7"
 
-// Definir JWTClaims aquí si no quieres importar desde application
 type JWTClaims struct {
     UserID   int64  `json:"user_id"`
     Email    string `json:"email"`
+    Username string `json:"username"`
     AuthType string `json:"auth_type"`
+    IsAdmin  bool   `json:"is_admin"`
     jwt.RegisteredClaims
 }
 
@@ -35,7 +35,7 @@ func AuthMiddleware() gin.HandlerFunc {
         }
 
         token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
-            return []byte(jwtSecret), nil
+            return []byte(JwtSecret), nil
         })
 
         if err != nil || !token.Valid {
@@ -51,7 +51,9 @@ func AuthMiddleware() gin.HandlerFunc {
 
         c.Set("userID", claims.UserID)
         c.Set("userEmail", claims.Email)
+        c.Set("username", claims.Username)
         c.Set("authType", claims.AuthType)
+        c.Set("isAdmin", claims.IsAdmin)
         
         c.Next()
     }
@@ -78,3 +80,4 @@ func AdminMiddleware() gin.HandlerFunc {
         c.Next()
     }
 }
+

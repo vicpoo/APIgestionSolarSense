@@ -28,20 +28,22 @@ func InitAuthRoutes(router *gin.Engine) {
         getAuthHandler,
     )
     
-    // Configurar almacenamiento de sesión (opcional si usas JWT)
     store := cookie.NewStore([]byte("secret"))
     router.Use(sessions.Sessions("mysession", store))
     
     authGroup := router.Group("/api/auth")
     {
+        // Endpoints públicos
         authGroup.POST("/email/register", loginController.RegisterEmail)
         authGroup.POST("/email/login", loginController.LoginEmail)
         authGroup.POST("/google", loginController.GoogleAuth)
         
-        // Proteger estos endpoints con JWT
+        // Nuevo endpoint público para obtener usuarios
+        authGroup.GET("/users", loginController.GetAllUsers) // <- Sin middlewares
+        
+        // Endpoints protegidos para usuarios normales
         private := authGroup.Group("")
         private.Use(core.AuthMiddleware())
-        private.Use(core.EmailUserMiddleware()) // Solo para usuarios de email
         {
             private.GET("/me", loginController.GetCurrentUser)
             private.PUT("/email", loginController.UpdateUserEmail)
@@ -49,8 +51,12 @@ func InitAuthRoutes(router *gin.Engine) {
             private.DELETE("/account", loginController.DeleteAccount)
         }
         
-        // Endpoints de admin
-        authGroup.GET("/users", loginController.GetAllUsers)
-        authGroup.GET("/users/:id", loginController.GetUserByID)
+        // Endpoints de admin (protegidos)
+        admin := authGroup.Group("")
+        admin.Use(core.AuthMiddleware())
+        admin.Use(core.AdminMiddleware())
+        {
+            admin.GET("/users/:id", loginController.GetUserByID)
+        }
     }
 }
