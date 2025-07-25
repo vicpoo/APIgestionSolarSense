@@ -2,92 +2,98 @@
 package infrastructure
 
 import (
-    "context"
-    "database/sql"
-    "fmt"
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
 
-    "github.com/vicpoo/apigestion-solar-go/src/login/domain"
+	"github.com/vicpoo/apigestion-solar-go/src/login/domain"
 )
 
 type AuthRepositoryImpl struct {
-    db *sql.DB
+	db *sql.DB
 }
 
 func NewAuthRepository(db *sql.DB) domain.AuthRepository {
-    return &AuthRepositoryImpl{db: db}
+	return &AuthRepositoryImpl{db: db}
 }
 
 func (r *AuthRepositoryImpl) CreateUserWithEmail(ctx context.Context, email, username, passwordHash string) (int64, error) {
-    tx, err := r.db.BeginTx(ctx, nil)
-    if err != nil {
-        return 0, fmt.Errorf("could not start transaction: %w", err)
-    }
-    defer tx.Rollback()
+	tx, err := r.db.BeginTx(ctx, nil)
+	if err != nil {
+		return 0, fmt.Errorf("could not start transaction: %w", err)
+	}
+	defer tx.Rollback()
 
-    // 1. Verificar si el usuario ya existe
-    var existingID int64
-    err = tx.QueryRowContext(ctx, "SELECT id FROM users WHERE email = ?", email).Scan(&existingID)
-    if err == nil {
-        return 0, fmt.Errorf("user with this email already exists")
-    }
-    if err != nil && err != sql.ErrNoRows {
-        return 0, fmt.Errorf("could not check user existence: %w", err)
-    }
+	// 1. Verificar si el usuario ya existe
+	var existingID int64
+	err = tx.QueryRowContext(ctx, "SELECT id FROM users WHERE email = ?", email).Scan(&existingID)
+	if err == nil {
+		return 0, fmt.Errorf("user with this email already exists")
+	}
+	if err != nil && err != sql.ErrNoRows {
+		return 0, fmt.Errorf("could not check user existence: %w", err)
+	}
 
-    // 2. Insertar en users
-    res, err := tx.ExecContext(ctx,
-        `INSERT INTO users (email, display_name, username, password_hash, auth_type, created_at, last_login, is_active) 
+	// 2. Insertar en users
+	res, err := tx.ExecContext(ctx,
+		`INSERT INTO users (email, display_name, username, password_hash, auth_type, created_at, last_login, is_active) 
          VALUES (?, ?, ?, ?, 'email', NOW(), NOW(), 1)`,
-        email, username, username, passwordHash)
-    if err != nil {
-        return 0, fmt.Errorf("could not create user: %w", err)
-    }
+		email, username, username, passwordHash)
+	if err != nil {
+		return 0, fmt.Errorf("could not create user: %w", err)
+	}
 
-    userID, err := res.LastInsertId()
-    if err != nil {
-        return 0, fmt.Errorf("could not get user ID: %w", err)
-    }
+	userID, err := res.LastInsertId()
+	if err != nil {
+		return 0, fmt.Errorf("could not get user ID: %w", err)
+	}
 
-    // 3. Insertar membresía solo si no existe
-    _, err = tx.ExecContext(ctx,
-        `INSERT INTO memberships (user_id, type, created_at, updated_at) 
+	// 3. Insertar membresía solo si no existe
+	_, err = tx.ExecContext(ctx,
+		`INSERT INTO memberships (user_id, type, created_at, updated_at) 
          VALUES (?, 'free', NOW(), NOW())
          ON DUPLICATE KEY UPDATE updated_at = NOW()`, // Maneja el caso duplicado
-        userID)
-    if err != nil {
-        return 0, fmt.Errorf("could not create membership: %w", err)
-    }
+		userID)
+	if err != nil {
+		return 0, fmt.Errorf("could not create membership: %w", err)
+	}
 
-    if err := tx.Commit(); err != nil {
-        return 0, fmt.Errorf("transaction failed: %w", err)
-    }
+	if err := tx.Commit(); err != nil {
+		return 0, fmt.Errorf("transaction failed: %w", err)
+	}
 
-    return userID, nil
+	return userID, nil
 }
 func (r *AuthRepositoryImpl) FindUserByEmail(ctx context.Context, email string) (*domain.User, string, error) {
     var user domain.User
     var passwordHash string
     var isAdmin bool
 
+    // Consulta mejorada que verifica ambas tablas
     err := r.db.QueryRowContext(ctx,
-        `SELECT u.id, u.display_name, u.password_hash, 
-         CASE WHEN m.type = 'admin' THEN 1 ELSE 0 END as is_admin
+        `SELECT u.id, u.email, u.username, ea.password_hash, 
+         CASE WHEN m.type = 'admin' THEN 1 ELSE 0 END as is_admin,
+         u.is_active
          FROM users u
+         JOIN email_auth ea ON u.id = ea.user_id
          LEFT JOIN memberships m ON u.id = m.user_id
-         WHERE u.email = ? AND u.auth_type = 'email' AND u.is_active = 1`,
+         WHERE u.email = ? AND u.auth_type = 'email'`,
         email,
-    ).Scan(&user.ID, &user.Username, &passwordHash, &isAdmin)
+    ).Scan(&user.ID, &user.Email, &user.Username, &passwordHash, &isAdmin, &user.IsActive)
 
     if err != nil {
-        return nil, "", err
+        return nil, "", fmt.Errorf("invalid email or password: %v", err)
     }
 
-    user.Email = email
+    if !user.IsActive {
+        return nil, "", errors.New("account is not active")
+    }
+
     user.AuthType = "email"
     user.IsAdmin = isAdmin
     return &user, passwordHash, nil
 }
-
 func (r *AuthRepositoryImpl) FindUserByID(ctx context.Context, id int64) (*domain.User, string, error) {
 	var user domain.User
 	var passwordHash string
@@ -145,8 +151,8 @@ func (r *AuthRepositoryImpl) UpdateUserEmail(ctx context.Context, currentEmail, 
 }
 
 func (r *AuthRepositoryImpl) UpdatePassword(ctx context.Context, userID int64, newPasswordHash string) error {
-	_, err := r.db.ExecContext(ctx, 
-		"UPDATE email_auth SET password_hash = ? WHERE user_id = ?", 
+	_, err := r.db.ExecContext(ctx,
+		"UPDATE email_auth SET password_hash = ? WHERE user_id = ?",
 		newPasswordHash, userID)
 	return err
 }
@@ -205,7 +211,7 @@ func (r *AuthRepositoryImpl) DeleteUserByEmail(ctx context.Context, email string
 }
 
 func (r *AuthRepositoryImpl) GetAllUsers(ctx context.Context) ([]*domain.User, error) {
-    query := `
+	query := `
         SELECT 
             id, 
             uid, 
@@ -221,59 +227,59 @@ func (r *AuthRepositoryImpl) GetAllUsers(ctx context.Context) ([]*domain.User, e
         FROM users
         ORDER BY created_at DESC`
 
-    rows, err := r.db.QueryContext(ctx, query)
-    if err != nil {
-        return nil, fmt.Errorf("could not get users: %w", err)
-    }
-    defer rows.Close()
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("could not get users: %w", err)
+	}
+	defer rows.Close()
 
-    var users []*domain.User
-    for rows.Next() {
-        var user domain.User
-        var (
-            uid, username, photoURL sql.NullString
-            lastLogin sql.NullTime  // Para manejar NULL en last_login
-        )
+	var users []*domain.User
+	for rows.Next() {
+		var user domain.User
+		var (
+			uid, username, photoURL sql.NullString
+			lastLogin               sql.NullTime // Para manejar NULL en last_login
+		)
 
-        err := rows.Scan(
-            &user.ID,
-            &uid,
-            &user.Email,
-            &user.Username, // display_name como username
-            &username,
-            &photoURL,
-            &user.Provider,
-            &user.AuthType,
-            &user.IsActive,
-            &user.CreatedAt,
-            &lastLogin,    // Escaneamos como NullTime
-        )
-        if err != nil {
-            return nil, fmt.Errorf("could not scan user: %w", err)
-        }
+		err := rows.Scan(
+			&user.ID,
+			&uid,
+			&user.Email,
+			&user.Username, // display_name como username
+			&username,
+			&photoURL,
+			&user.Provider,
+			&user.AuthType,
+			&user.IsActive,
+			&user.CreatedAt,
+			&lastLogin, // Escaneamos como NullTime
+		)
+		if err != nil {
+			return nil, fmt.Errorf("could not scan user: %w", err)
+		}
 
-        // Manejar campos NULL
-        if uid.Valid {
-            user.UID = uid.String
-        }
-        if photoURL.Valid {
-            user.PhotoURL = photoURL.String
-        }
-        if !username.Valid {
-            user.Username = "sin_usuario"
-        }
-        if lastLogin.Valid {
-            user.LastLogin = lastLogin.Time
-        }
+		// Manejar campos NULL
+		if uid.Valid {
+			user.UID = uid.String
+		}
+		if photoURL.Valid {
+			user.PhotoURL = photoURL.String
+		}
+		if !username.Valid {
+			user.Username = "sin_usuario"
+		}
+		if lastLogin.Valid {
+			user.LastLogin = lastLogin.Time
+		}
 
-        users = append(users, &user)
-    }
+		users = append(users, &user)
+	}
 
-    if err = rows.Err(); err != nil {
-        return nil, fmt.Errorf("error iterating users: %w", err)
-    }
+	if err = rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating users: %w", err)
+	}
 
-    return users, nil
+	return users, nil
 }
 func (r *AuthRepositoryImpl) GetUserByID(ctx context.Context, userID int64) (*domain.User, error) {
 	query := `
@@ -324,18 +330,18 @@ func (r *AuthRepositoryImpl) GetUserByID(ctx context.Context, userID int64) (*do
 }
 
 func (r *AuthRepositoryImpl) GetUserMembershipType(ctx context.Context, userID int64) (string, error) {
-    var membershipType string
-    err := r.db.QueryRowContext(ctx,
-        `SELECT type FROM memberships WHERE user_id = ?`,
-        userID,
-    ).Scan(&membershipType)
+	var membershipType string
+	err := r.db.QueryRowContext(ctx,
+		`SELECT type FROM memberships WHERE user_id = ?`,
+		userID,
+	).Scan(&membershipType)
 
-    if err != nil {
-        if err == sql.ErrNoRows {
-            return "free", nil // Valor por defecto si no hay membresía
-        }
-        return "", err
-    }
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "free", nil // Valor por defecto si no hay membresía
+		}
+		return "", err
+	}
 
-    return membershipType, nil
+	return membershipType, nil
 }

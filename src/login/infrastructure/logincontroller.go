@@ -2,18 +2,18 @@
 package infrastructure
 
 import (
+	"log"
+	"time"
 
-
-	"fmt"
-	
 	"net/http"
 	"strconv"
 
-	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/vicpoo/apigestion-solar-go/src/core"
 	"github.com/vicpoo/apigestion-solar-go/src/login/application"
 	"github.com/vicpoo/apigestion-solar-go/src/login/domain"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type LoginController struct {
@@ -129,52 +129,60 @@ func (c *LoginController) UpdatePassword(ctx *gin.Context) {
 func (c *LoginController) LoginEmail(ctx *gin.Context) {
     var creds domain.UserCredentials
     if err := ctx.ShouldBindJSON(&creds); err != nil {
+        log.Printf("Error binding JSON: %v", err)
         ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
         return
     }
+     log.Printf("Intento de login con email: '%s'", creds.Email)
 
-    // Autenticar al usuario - ahora usamos el response directamente en la respuesta
-    authResponse, err := c.authHandlers.LoginEmail(ctx)
+    // Buscar usuario directamente en la base de datos
+    user, passwordHash, err := c.getUseCase.Repo.FindUserByEmail(ctx.Request.Context(), creds.Email)
     if err != nil {
-        ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
+        ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
+        return
+    }
+    log.Printf("Usuario encontrado. Comparando hash: %s con password: %s", passwordHash, creds.Password)
+    // Verificar contraseña CON bcrypt
+    if err := bcrypt.CompareHashAndPassword([]byte(passwordHash), []byte(creds.Password)); err != nil {
+          log.Printf("Error comparando contraseñas: %v", err)
+        ctx.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid email or password"})
         return
     }
 
-    // Obtener datos completos del usuario
-    user, err := c.getUseCase.GetUserByEmail(ctx.Request.Context(), creds.Email)
-    if err != nil {
-        ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Could not get user data"})
-        return
+    // Configurar zona horaria de México
+    loc, _ := time.LoadLocation("America/Mexico_City")
+    now := time.Now().In(loc)
+    
+    // Generar token que expire en 48 horas
+    claims := core.JWTClaims{
+        UserID:   user.ID,
+        Email:    user.Email,
+        Username: user.Username,
+        AuthType: user.AuthType,
+        IsAdmin:  user.IsAdmin,
+        RegisteredClaims: jwt.RegisteredClaims{
+            ExpiresAt: jwt.NewNumericDate(now.Add(48 * time.Hour)),
+            IssuedAt:  jwt.NewNumericDate(now),
+        },
     }
 
-    // Generar token con duración de 48 horas
-    token, err := GenerateJWTToken(user)
+    token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+    tokenString, err := token.SignedString([]byte(core.JwtSecret))
     if err != nil {
         ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate token"})
         return
     }
 
-    // Establecer la sesión
-    session := sessions.Default(ctx)
-    session.Set("userID", user.ID)
-    if err := session.Save(); err != nil {
-        ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save session"})
-        return
-    }
-
-    // Mostrar en consola
-    fmt.Printf("Usuario logueado - ID: %d, Email: %s\n", user.ID, user.Email)
-
-    // Combinamos la respuesta de authHandlers con nuestros datos adicionales
+    // Respuesta simplificada
     ctx.JSON(http.StatusOK, gin.H{
-        "success":    authResponse.Success,
-        "message":    authResponse.Message,
-        "token":      token,
-        "user_id":    user.ID,
-        "email":      user.Email,
-        "username":   user.Username,
-        "auth_type":  user.AuthType,
-        "expires_in": 48 * 3600, // 48 horas en segundos
+        "success":  true,
+        "message":  "Login successful",
+        "token":    tokenString,
+        "user_id":  user.ID,
+        "email":    user.Email,
+        "username": user.Username,
+        "role":     "admin", // O puedes usar user.IsAdmin para determinar el rol
+        "expires_at": now.Add(48 * time.Hour).Format(time.RFC3339),
     })
 }
 func (c *LoginController) RegisterEmail(ctx *gin.Context) {

@@ -2,8 +2,7 @@
 package infrastructure
 
 import (
-    "github.com/gin-contrib/sessions"
-    "github.com/gin-contrib/sessions/cookie"
+   
     "github.com/gin-gonic/gin"
     "github.com/vicpoo/apigestion-solar-go/src/core"
     "github.com/vicpoo/apigestion-solar-go/src/login/application"
@@ -28,8 +27,7 @@ func InitAuthRoutes(router *gin.Engine) {
         getAuthHandler,
     )
     
-    store := cookie.NewStore([]byte("secret"))
-    router.Use(sessions.Sessions("mysession", store))
+    
     
     authGroup := router.Group("/api/auth")
     {

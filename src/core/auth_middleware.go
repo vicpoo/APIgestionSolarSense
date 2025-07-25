@@ -24,13 +24,13 @@ func AuthMiddleware() gin.HandlerFunc {
     return func(c *gin.Context) {
         authHeader := c.GetHeader("Authorization")
         if authHeader == "" {
-            c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
+            c.Next() // Permitir continuar sin token
             return
         }
 
         tokenString := strings.TrimPrefix(authHeader, "Bearer ")
         if tokenString == "" {
-            c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token format"})
+            c.Next() // Permitir continuar sin token
             return
         }
 
@@ -39,26 +39,21 @@ func AuthMiddleware() gin.HandlerFunc {
         })
 
         if err != nil || !token.Valid {
-            c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+            c.Next() // Permitir continuar incluso con token inválido
             return
         }
 
-        claims, ok := token.Claims.(*JWTClaims)
-        if !ok {
-            c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Invalid token claims"})
-            return
+        if claims, ok := token.Claims.(*JWTClaims); ok {
+            c.Set("userID", claims.UserID)
+            c.Set("userEmail", claims.Email)
+            c.Set("username", claims.Username)
+            c.Set("authType", claims.AuthType)
+            c.Set("isAdmin", claims.IsAdmin)
         }
-
-        c.Set("userID", claims.UserID)
-        c.Set("userEmail", claims.Email)
-        c.Set("username", claims.Username)
-        c.Set("authType", claims.AuthType)
-        c.Set("isAdmin", claims.IsAdmin)
         
         c.Next()
     }
 }
-
 func EmailUserMiddleware() gin.HandlerFunc {
     return func(c *gin.Context) {
         authType, exists := c.Get("authType")

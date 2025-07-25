@@ -1,29 +1,31 @@
-//api/main.go
+// api/main.go
 package main
 
 import (
-    "fmt"
-    "log"
-    "os"
-    "time"
+	"fmt"
+	"log"
+	"os"
+	"time"
 
-    "github.com/gin-contrib/cors"
-    "github.com/gin-gonic/gin"
+	"github.com/gin-contrib/cors"
+	"github.com/gin-gonic/gin"
+	
 
-    "github.com/vicpoo/apigestion-solar-go/src/core"
-    alertinfra "github.com/vicpoo/apigestion-solar-go/src/alerts/infrastructure"
-    authinfra "github.com/vicpoo/apigestion-solar-go/src/login/infrastructure"
-    membershipinfra "github.com/vicpoo/apigestion-solar-go/src/memberships/infrastructure"
-    notificationinfra "github.com/vicpoo/apigestion-solar-go/src/notification_settings/infrastructure"
-    readinginfra "github.com/vicpoo/apigestion-solar-go/src/sensor_readings/infrastructure"
-    reportinfra "github.com/vicpoo/apigestion-solar-go/src/reports/infrastructure"
-    sensorinfra "github.com/vicpoo/apigestion-solar-go/src/sensors/infrastructure"
-    sessioninfra "github.com/vicpoo/apigestion-solar-go/src/sessions/infrastructure"
-    thresholdinfra "github.com/vicpoo/apigestion-solar-go/src/sensor_thresholds/infrastructure"
-    systemnewsinfra "github.com/vicpoo/apigestion-solar-go/src/system_news/infrastructure"
+	alertinfra "github.com/vicpoo/apigestion-solar-go/src/alerts/infrastructure"
+	"github.com/vicpoo/apigestion-solar-go/src/core"
+	authinfra "github.com/vicpoo/apigestion-solar-go/src/login/infrastructure"
+	membershipinfra "github.com/vicpoo/apigestion-solar-go/src/memberships/infrastructure"
+	notificationinfra "github.com/vicpoo/apigestion-solar-go/src/notification_settings/infrastructure"
+	reportinfra "github.com/vicpoo/apigestion-solar-go/src/reports/infrastructure"
+	readinginfra "github.com/vicpoo/apigestion-solar-go/src/sensor_readings/infrastructure"
+	thresholdinfra "github.com/vicpoo/apigestion-solar-go/src/sensor_thresholds/infrastructure"
+	sensorinfra "github.com/vicpoo/apigestion-solar-go/src/sensors/infrastructure"
+	sessioninfra "github.com/vicpoo/apigestion-solar-go/src/sessions/infrastructure"
+	systemnewsinfra "github.com/vicpoo/apigestion-solar-go/src/system_news/infrastructure"
 )
 
 func main() {
+
     // Inicializar base de datos
     core.InitDB()
 

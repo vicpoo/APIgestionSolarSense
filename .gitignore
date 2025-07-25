@@ -1,6 +1,14 @@
+# Claves privadas o sensibles
 serviceAccountKey.json
-serviceAccountKey"serviceAccountKey.json" 
 
+# Archivos binarios o compilados
+*.exe
+*.out
+*.o
 
-go.mod
-go.sum
+# Carpetas de dependencias (si usas vendoring)
+vendor/
+
+# Archivos temporales del sistema
+.DS_Store
+Thumbs.db
