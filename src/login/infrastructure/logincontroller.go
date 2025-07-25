@@ -35,34 +35,40 @@ func NewLoginController(
 		getAuthHandler: getAuthHandler,
 	}
 }
-// En logincontroller.go
+
 func (c *LoginController) GetCurrentUser(ctx *gin.Context) {
-    // Obtener el ID del usuario de la sesión
-    userID, exists := ctx.Get("userID")
+    // Obtener claims del token
+    claims, exists := ctx.Get("jwtClaims")
     if !exists {
         ctx.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
         return
     }
 
-    // Convertir a int64
-    id, ok := userID.(int64)
+    jwtClaims, ok := claims.(*JWTClaims)
     if !ok {
-        ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid user ID format"})
+        ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid token claims"})
         return
     }
 
-    // Obtener los datos del usuario
-    user, err := c.getUseCase.GetUserByID(ctx.Request.Context(), id)
+    // Obtener datos completos del usuario desde la base de datos
+    user, err := c.getUseCase.GetUserByID(ctx.Request.Context(), jwtClaims.UserID)
     if err != nil {
         ctx.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
         return
     }
 
-    // Mostrar en consola
-    fmt.Printf("Consultando datos del usuario - ID: %d, Email: %s\n", user.ID, user.Email)
-
-    ctx.JSON(http.StatusOK, user)
+    // Devolver todos los datos del usuario
+    ctx.JSON(http.StatusOK, gin.H{
+        "user_id":    user.ID,
+        "email":      user.Email,
+        "username":   user.Username,
+        "auth_type":  user.AuthType,
+        "is_active":  user.IsActive,
+        "last_login": user.LastLogin,
+        "created_at": user.CreatedAt,
+    })
 }
+
 func (c *LoginController) UpdateUserEmail(ctx *gin.Context) {
 	userEmail, exists := ctx.Get("userEmail")
 	if !exists {
@@ -95,12 +101,6 @@ func (c *LoginController) UpdatePassword(ctx *gin.Context) {
 		return
 	}
 
-	user, err := c.getUseCase.GetUserByEmail(ctx.Request.Context(), userEmail.(string))
-	if err != nil {
-		ctx.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
-		return
-	}
-
 	var updateRequest struct {
 		CurrentPassword string `json:"current_password" binding:"required"`
 		NewPassword     string `json:"new_password" binding:"required,min=8"`
@@ -108,6 +108,12 @@ func (c *LoginController) UpdatePassword(ctx *gin.Context) {
 	
 	if err := ctx.ShouldBindJSON(&updateRequest); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request: " + err.Error()})
+		return
+	}
+	
+	user, err := c.getUseCase.GetUserByEmail(ctx.Request.Context(), userEmail.(string))
+	if err != nil {
+		ctx.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
 	
@@ -120,52 +126,61 @@ func (c *LoginController) UpdatePassword(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"message": "Password updated successfully"})
 }
 
-
-
-func (c *LoginController) RegisterEmail(ctx *gin.Context) {
-	c.authHandlers.RegisterEmail(ctx)
-}
 func (c *LoginController) LoginEmail(ctx *gin.Context) {
-    response, err := c.authHandlers.LoginEmail(ctx)
+    var creds domain.UserCredentials
+    if err := ctx.ShouldBindJSON(&creds); err != nil {
+        ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request payload"})
+        return
+    }
+
+    // Autenticar al usuario - ahora usamos el response directamente en la respuesta
+    authResponse, err := c.authHandlers.LoginEmail(ctx)
     if err != nil {
         ctx.JSON(http.StatusUnauthorized, gin.H{"error": err.Error()})
         return
     }
 
-    var creds domain.UserCredentials
-    if err := ctx.ShouldBindJSON(&creds); err == nil {
-        user, err := c.getUseCase.GetUserByEmail(ctx.Request.Context(), creds.Email)
-        if err != nil {
-            ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Could not get user data"})
-            return
-        }
-
-        // Establecer la sesión
-        session := sessions.Default(ctx)
-        session.Set("userID", user.ID)
-        if err := session.Save(); err != nil {
-            ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save session"})
-            return
-        }
-
-        // Mostrar en consola
-        fmt.Printf("Usuario logueado - ID: %d, Email: %s\n", user.ID, user.Email)
-
-        // Modificar la respuesta para incluir datos del usuario
-        userResponse := map[string]interface{}{
-            "success":  true,
-            "message":  "Login successful",
-            "user_id":  user.ID,
-            "email":    user.Email,
-            "username": user.Username,
-        }
-        
-        ctx.JSON(http.StatusOK, userResponse)
+    // Obtener datos completos del usuario
+    user, err := c.getUseCase.GetUserByEmail(ctx.Request.Context(), creds.Email)
+    if err != nil {
+        ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Could not get user data"})
         return
     }
-    
-    ctx.JSON(http.StatusOK, response)
+
+    // Generar token con duración de 48 horas
+    token, err := GenerateJWTToken(user)
+    if err != nil {
+        ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate token"})
+        return
+    }
+
+    // Establecer la sesión
+    session := sessions.Default(ctx)
+    session.Set("userID", user.ID)
+    if err := session.Save(); err != nil {
+        ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save session"})
+        return
+    }
+
+    // Mostrar en consola
+    fmt.Printf("Usuario logueado - ID: %d, Email: %s\n", user.ID, user.Email)
+
+    // Combinamos la respuesta de authHandlers con nuestros datos adicionales
+    ctx.JSON(http.StatusOK, gin.H{
+        "success":    authResponse.Success,
+        "message":    authResponse.Message,
+        "token":      token,
+        "user_id":    user.ID,
+        "email":      user.Email,
+        "username":   user.Username,
+        "auth_type":  user.AuthType,
+        "expires_in": 48 * 3600, // 48 horas en segundos
+    })
 }
+func (c *LoginController) RegisterEmail(ctx *gin.Context) {
+	c.authHandlers.RegisterEmail(ctx)
+}
+
 func (c *LoginController) GoogleAuth(ctx *gin.Context) {
     response, err := c.authHandlers.GoogleAuth(ctx)
     if err != nil {
@@ -187,7 +202,7 @@ func (c *LoginController) GoogleAuth(ctx *gin.Context) {
                     return
                 }
 
-                token, err := GenerateJWTToken(user, membershipType)
+                token, err := GenerateJWTToken(user)
                 if err != nil {
                     ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate token"})
                     return
@@ -202,24 +217,13 @@ func (c *LoginController) GoogleAuth(ctx *gin.Context) {
     
     ctx.JSON(http.StatusOK, response)
 }
+
 func (c *LoginController) GetAllUsers(ctx *gin.Context) {
 	c.getAuthHandler.GetAllUsers(ctx)
 }
 
 func (c *LoginController) GetUserByID(ctx *gin.Context) {
 	c.getAuthHandler.GetUserByID(ctx)
-}
-
-// Función auxiliar para decodificar tokens (similar a la que está en auth_service)
-func decodeTokenWithoutVerification(idToken string) (map[string]interface{}, error) {
-	// Implementación similar a la que ya tienes en auth_service
-	return nil, nil
-}
-
-func generateJWTToken(user *domain.User) (string, error) {
-    // Implementación real de generación de token JWT
-    // Debe incluir: user.ID, user.Email, user.AuthType, user.IsAdmin
-    return "generated-jwt-token", nil
 }
 
 func (c *LoginController) DeleteAccount(ctx *gin.Context) {
@@ -246,4 +250,9 @@ func (c *LoginController) DeleteAccount(ctx *gin.Context) {
     }
     
     ctx.JSON(http.StatusOK, gin.H{"message": "Account deleted successfully"})
+}
+
+// Función auxiliar para decodificar tokens
+func decodeTokenWithoutVerification(idToken string) (map[string]interface{}, error) {
+	return nil, nil
 }

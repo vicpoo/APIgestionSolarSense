@@ -54,24 +54,27 @@ func (r *AuthRepositoryImpl) CreateUserWithEmail(ctx context.Context, email, use
 }
 
 func (r *AuthRepositoryImpl) FindUserByEmail(ctx context.Context, email string) (*domain.User, string, error) {
-	var user domain.User
-	var passwordHash string
+    var user domain.User
+    var passwordHash string
+    var isAdmin bool
 
-	err := r.db.QueryRowContext(ctx,
-		`SELECT ea.user_id, ea.username, ea.password_hash 
-		 FROM email_auth ea
-		 JOIN users u ON ea.user_id = u.id
-		 WHERE ea.email = ? AND u.auth_type = 'email' AND u.is_active = 1`,
-		email,
-	).Scan(&user.ID, &user.Username, &passwordHash)
+    err := r.db.QueryRowContext(ctx,
+        `SELECT ea.user_id, ea.username, ea.password_hash, 
+         CASE WHEN m.type = 'admin' THEN 1 ELSE 0 END as is_admin
+         FROM email_auth ea
+         JOIN users u ON ea.user_id = u.id
+         LEFT JOIN memberships m ON u.id = m.user_id
+         WHERE ea.email = ? AND u.auth_type = 'email' AND u.is_active = 1`,
+        email,
+    ).Scan(&user.ID, &user.Username, &passwordHash, &isAdmin)
 
-	if err != nil {
-		return nil, "", err
-	}
+    if err != nil {
+        return nil, "", err
+    }
 
-	return &user, passwordHash, nil
+    user.IsAdmin = isAdmin
+    return &user, passwordHash, nil
 }
-
 func (r *AuthRepositoryImpl) FindUserByID(ctx context.Context, id int64) (*domain.User, string, error) {
 	var user domain.User
 	var passwordHash string

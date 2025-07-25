@@ -1,28 +1,29 @@
 //api/src/login/application/auth_service.go
-
 package application
 
 import (
-	"context"
-	"encoding/base64"
-	"encoding/json"
-	"errors"
-	"fmt"
-	"strings"
-	"time"
+    "context"
+    "encoding/base64"
+    "encoding/json"
+    "errors"
+    "fmt"
+    "strings"
+    "time"
 
-	"github.com/golang-jwt/jwt/v4"
-	"github.com/vicpoo/apigestion-solar-go/src/login/domain"
-	"golang.org/x/crypto/bcrypt"
+    "github.com/golang-jwt/jwt/v4"
+    "github.com/vicpoo/apigestion-solar-go/src/login/domain"
+    "golang.org/x/crypto/bcrypt"
 )
 
 const (
-    jwtSecret = "d3c8f2b9e7a14b0f932c0d7d9a7e4f5d6c1a2e8b9f3c4a6e7b1d0f4c9a5e6b7" // Cambia esto en producción
+    jwtSecret = "d3c8f2b9e7a14b0f932c0d7d9a7e4f5d6c1a2e8b9f3c4a6e7b1d0f4c9a5e6b7"
 )
+
 type JWTClaims struct {
     UserID   int64  `json:"user_id"`
     Email    string `json:"email"`
     AuthType string `json:"auth_type"`
+    IsAdmin  bool   `json:"is_admin"`
     jwt.RegisteredClaims
 }
 
@@ -30,7 +31,8 @@ func generateJWTToken(user *domain.User) (string, error) {
     claims := JWTClaims{
         UserID:   user.ID,
         Email:    user.Email,
-        AuthType: "email",
+        AuthType: user.AuthType,
+        IsAdmin:  user.IsAdmin,
         RegisteredClaims: jwt.RegisteredClaims{
             ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
         },

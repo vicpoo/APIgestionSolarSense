@@ -1,4 +1,4 @@
-//src/login/infrastructure/admin_middleware.go
+// src/login/infrastructure/admin_middleware.go
 package infrastructure
 
 import (
@@ -12,7 +12,7 @@ func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization token required"})
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization header required"})
 			return
 		}
 
@@ -28,11 +28,8 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		c.Set("userID", claims.UserID)
-		c.Set("userEmail", claims.Email)
-		c.Set("authType", claims.AuthType)
-		c.Set("isAdmin", claims.IsAdmin)
-		
+		// Guardar los claims en el contexto para su uso posterior
+		c.Set("jwtClaims", claims)
 		c.Next()
 	}
 }
@@ -50,8 +47,14 @@ func EmailUserMiddleware() gin.HandlerFunc {
 
 func AdminMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		isAdmin, exists := c.Get("isAdmin")
-		if !exists || !isAdmin.(bool) {
+		claims, exists := c.Get("jwtClaims")
+		if !exists {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+			return
+		}
+
+		jwtClaims, ok := claims.(*JWTClaims)
+		if !ok || !jwtClaims.IsAdmin {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"error": "Admin privileges required"})
 			return
 		}

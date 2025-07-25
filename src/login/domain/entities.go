@@ -15,22 +15,22 @@ type AuthResponse struct {
     IsAdmin  bool   `json:"is_admin,omitempty"`
 }
 
-
 type UserCredentials struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	Username string `json:"username,omitempty"`
+    Email    string `json:"email"`
+    Password string `json:"password"`
+    Username string `json:"username,omitempty"`
 }
 
 type User struct {
-	ID        int64     `json:"id"`
-	UID       string    `json:"uid,omitempty"`
-	Email     string    `json:"email"`
-	Username  string    `json:"username,omitempty"`
-	AuthType  string    `json:"auth_type"`
-	IsActive  bool      `json:"is_active"`
-	LastLogin time.Time `json:"last_login,omitempty"`
-	PhotoURL  string    `json:"photo_url,omitempty"`
-	Provider  string    `json:"provider,omitempty"`
-	CreatedAt time.Time `json:"created_at,omitempty"`
+    ID        int64     `json:"id"`
+    UID       string    `json:"uid,omitempty"`
+    Email     string    `json:"email"`
+    Username  string    `json:"username,omitempty"`
+    AuthType  string    `json:"auth_type"`
+    IsActive  bool      `json:"is_active"`
+    IsAdmin   bool      `json:"is_admin"`
+    LastLogin time.Time `json:"last_login,omitempty"`
+    PhotoURL  string    `json:"photo_url,omitempty"`
+    Provider  string    `json:"provider,omitempty"`
+    CreatedAt time.Time `json:"created_at,omitempty"`
 }

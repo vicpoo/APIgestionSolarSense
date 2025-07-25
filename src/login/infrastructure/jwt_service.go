@@ -10,29 +10,28 @@ import (
 
 const (
 	jwtSecret = "TuSuperSecretKeySegura123!@#" // Cambia esto en producción
-	tokenDuration = 24 * time.Hour
+	tokenDuration = 48 * time.Hour // 48 horas de validez
 )
 
 type JWTClaims struct {
 	UserID   int64  `json:"user_id"`
 	Email    string `json:"email"`
+	Username string `json:"username"`
 	AuthType string `json:"auth_type"`
 	IsAdmin  bool   `json:"is_admin"`
 	jwt.RegisteredClaims
 }
 
-func GenerateJWTToken(user *domain.User, membershipType string) (string, error) {
-	isAdmin := membershipType == "admin"
-	
+func GenerateJWTToken(user *domain.User) (string, error) {
 	claims := JWTClaims{
 		UserID:   user.ID,
 		Email:    user.Email,
+		Username: user.Username,
 		AuthType: user.AuthType,
-		IsAdmin:  isAdmin,
+		IsAdmin:  user.IsAdmin,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(tokenDuration)),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),
-			NotBefore: jwt.NewNumericDate(time.Now()),
 		},
 	}
 
@@ -42,9 +41,6 @@ func GenerateJWTToken(user *domain.User, membershipType string) (string, error) 
 
 func ValidateJWTToken(tokenString string) (*JWTClaims, error) {
 	token, err := jwt.ParseWithClaims(tokenString, &JWTClaims{}, func(token *jwt.Token) (interface{}, error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, jwt.ErrSignatureInvalid
-		}
 		return []byte(jwtSecret), nil
 	})
 
