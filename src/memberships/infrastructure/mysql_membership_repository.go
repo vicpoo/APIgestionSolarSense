@@ -299,50 +299,69 @@ func (r *MySQLMembershipRepository) GetAllUsers(ctx context.Context) ([]*domain.
 }
 
 func (r *MySQLMembershipRepository) RegisterUser(ctx context.Context, email, username, passwordHash string) (int64, error) {
-	tx, err := r.db.BeginTx(ctx, nil)
-	if err != nil {
-		return 0, fmt.Errorf("could not start transaction: %w", err)
-	}
-	defer tx.Rollback()
+    tx, err := r.db.BeginTx(ctx, nil)
+    if err != nil {
+        return 0, fmt.Errorf("could not start transaction: %w", err)
+    }
+    defer tx.Rollback()
 
-	res, err := tx.ExecContext(ctx,
-		`INSERT INTO users (email, display_name, auth_type, created_at, last_login) 
-		 VALUES (?, ?, 'email', NOW(), NOW())`,
-		email, username)
-	if err != nil {
-		return 0, fmt.Errorf("could not create user: %w", err)
-	}
+    // Verificar si el usuario ya existe
+    var existingUserID int64
+    err = tx.QueryRowContext(ctx, "SELECT id FROM users WHERE email = ?", email).Scan(&existingUserID)
+    if err == nil {
+        return 0, fmt.Errorf("user already exists")
+    }
+    if err != nil && err != sql.ErrNoRows {
+        return 0, fmt.Errorf("could not check existing user: %w", err)
+    }
 
-	userID, err := res.LastInsertId()
-	if err != nil {
-		return 0, fmt.Errorf("could not get user ID: %w", err)
-	}
+    res, err := tx.ExecContext(ctx,
+        `INSERT INTO users (email, display_name, username, auth_type, created_at, last_login) 
+         VALUES (?, ?, ?, 'email', NOW(), NOW())`,
+        email, username, username)
+    if err != nil {
+        return 0, fmt.Errorf("could not create user: %w", err)
+    }
 
-	_, err = tx.ExecContext(ctx,
-		`INSERT INTO email_auth 
-		 (user_id, email, password_hash, username, created_at, updated_at) 
-		 VALUES (?, ?, ?, ?, NOW(), NOW())`,
-		userID, email, passwordHash, username)
-	if err != nil {
-		return 0, fmt.Errorf("could not save credentials: %w", err)
-	}
+    userID, err := res.LastInsertId()
+    if err != nil {
+        return 0, fmt.Errorf("could not get user ID: %w", err)
+    }
 
-	_, err = tx.ExecContext(ctx,
-		`INSERT INTO memberships 
-		 (user_id, type, extra_storage, created_at) 
-		 VALUES (?, 'free', false, NOW())`,
-		userID)
-	if err != nil {
-		return 0, fmt.Errorf("could not create membership: %w", err)
-	}
+    // Verificar si ya existe una membresía para este usuario
+    var membershipExists int
+    err = tx.QueryRowContext(ctx, "SELECT 1 FROM memberships WHERE user_id = ?", userID).Scan(&membershipExists)
+    if err == nil {
+        return 0, fmt.Errorf("membership already exists for user")
+    }
+    if err != nil && err != sql.ErrNoRows {
+        return 0, fmt.Errorf("could not check existing membership: %w", err)
+    }
 
-	if err := tx.Commit(); err != nil {
-		return 0, fmt.Errorf("transaction failed: %w", err)
-	}
+    _, err = tx.ExecContext(ctx,
+        `INSERT INTO email_auth 
+         (user_id, email, password_hash, username, created_at, updated_at) 
+         VALUES (?, ?, ?, ?, NOW(), NOW())`,
+        userID, email, passwordHash, username)
+    if err != nil {
+        return 0, fmt.Errorf("could not save credentials: %w", err)
+    }
 
-	return userID, nil
+    _, err = tx.ExecContext(ctx,
+        `INSERT INTO memberships 
+         (user_id, type, extra_storage, created_at) 
+         VALUES (?, 'free', false, NOW())`,
+        userID)
+    if err != nil {
+        return 0, fmt.Errorf("could not create membership: %w", err)
+    }
+
+    if err := tx.Commit(); err != nil {
+        return 0, fmt.Errorf("transaction failed: %w", err)
+    }
+
+    return userID, nil
 }
-
 // Nuevo método para corregir membresías faltantes
 func (r *MySQLMembershipRepository) FixMissingMemberships(ctx context.Context) error {
 	query := `
