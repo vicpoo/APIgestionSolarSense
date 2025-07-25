@@ -67,21 +67,30 @@ func (r *AuthRepositoryImpl) CreateUserWithEmail(ctx context.Context, email, use
 }
 func (r *AuthRepositoryImpl) FindUserByEmail(ctx context.Context, email string) (*domain.User, string, error) {
     var user domain.User
-    var passwordHash string
+    var passwordHash sql.NullString
     var isAdmin bool
 
-    // Consulta mejorada con JOIN explícito y manejo de errores
     err := r.db.QueryRowContext(ctx,
-        `SELECT u.id, u.email, COALESCE(ea.username, u.username) as username, 
-         ea.password_hash, 
-         CASE WHEN m.type = 'admin' THEN 1 ELSE 0 END as is_admin,
-         u.is_active
+        `SELECT 
+            u.id, 
+            u.email, 
+            COALESCE(ea.username, u.username) as username,
+            ea.password_hash,
+            CASE WHEN m.type = 'admin' THEN 1 ELSE 0 END as is_admin,
+            u.is_active
          FROM users u
-         LEFT JOIN email_auth ea ON u.id = ea.user_id
+         LEFT JOIN email_auth ea ON (u.id = ea.user_id OR u.email = ea.email)
          LEFT JOIN memberships m ON u.id = m.user_id
          WHERE u.email = ? AND u.auth_type = 'email'`,
         email,
-    ).Scan(&user.ID, &user.Email, &user.Username, &passwordHash, &isAdmin, &user.IsActive)
+    ).Scan(
+        &user.ID,
+        &user.Email,
+        &user.Username,
+        &passwordHash,
+        &isAdmin,
+        &user.IsActive,
+    )
 
     if err != nil {
         if err == sql.ErrNoRows {
@@ -90,17 +99,13 @@ func (r *AuthRepositoryImpl) FindUserByEmail(ctx context.Context, email string) 
         return nil, "", fmt.Errorf("database error: %v", err)
     }
 
-    if !user.IsActive {
-        return nil, "", errors.New("account is not active")
-    }
-
-    if passwordHash == "" {
+    if !passwordHash.Valid {
         return nil, "", errors.New("no password set for this user")
     }
 
     user.AuthType = "email"
     user.IsAdmin = isAdmin
-    return &user, passwordHash, nil
+    return &user, passwordHash.String, nil
 }
 func (r *AuthRepositoryImpl) FindUserByID(ctx context.Context, id int64) (*domain.User, string, error) {
 	var user domain.User
