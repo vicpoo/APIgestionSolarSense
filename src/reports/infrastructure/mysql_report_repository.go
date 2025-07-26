@@ -17,12 +17,13 @@ type MySQLReportRepository struct {
 func NewMySQLReportRepository() domain.ReportRepository {
     return &MySQLReportRepository{db: core.GetBD()}
 }
-
 func (r *MySQLReportRepository) Create(ctx context.Context, report *domain.Report) error {
     query := `INSERT INTO reports 
         (user_id, sensor_id, file_name, storage_path, generated_from, generated_to, format) 
         VALUES (?, ?, ?, ?, ?, ?, ?)`
-    _, err := r.db.ExecContext(ctx, query,
+    
+    // Usar ExecContext en lugar de Exec para obtener el resultado
+    result, err := r.db.ExecContext(ctx, query,
         report.UserID,
         report.SensorID,
         report.FileName,
@@ -31,7 +32,19 @@ func (r *MySQLReportRepository) Create(ctx context.Context, report *domain.Repor
         report.GeneratedTo,
         report.Format,
     )
-    return err
+    if err != nil {
+        return err
+    }
+
+    // Obtener el ID generado
+    id, err := result.LastInsertId()
+    if err != nil {
+        return err
+    }
+
+    // Asignar el ID al reporte
+    report.ID = int(id)
+    return nil
 }
 
 func (r *MySQLReportRepository) GetByID(ctx context.Context, id int) (*domain.Report, error) {

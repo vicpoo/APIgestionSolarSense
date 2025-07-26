@@ -104,6 +104,9 @@ func (uc *GenerateReportUseCase) GeneratePDFReport(ctx context.Context, req doma
     if err != nil {
         return nil, fmt.Errorf("error al guardar reporte en BD: %v", err)
     }
+    if report.ID == 0 {
+        return nil, fmt.Errorf("no se pudo obtener el ID del reporte generado")
+    }
 
     return report, nil
 }
