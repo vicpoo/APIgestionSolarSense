@@ -393,3 +393,15 @@ func (r *AuthRepositoryImpl) GetBySensorID(ctx context.Context, sensorID int) (*
 	}
 	return &user, nil
 }
+
+func (r *AuthRepositoryImpl) EmailExists(ctx context.Context, email string) (bool, error) {
+    var exists bool
+    query := `SELECT EXISTS(SELECT 1 FROM users WHERE email = ?)`
+    
+    err := r.db.QueryRowContext(ctx, query, email).Scan(&exists)
+    if err != nil {
+        return false, fmt.Errorf("error checking email existence: %w", err)
+    }
+    
+    return exists, nil
+}

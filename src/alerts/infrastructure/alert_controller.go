@@ -2,9 +2,11 @@
 package infrastructure
 
 import (
+    "net/http"
+    
     "github.com/gin-gonic/gin"
     "github.com/vicpoo/apigestion-solar-go/src/email"
-    "net/http"
+    udomain "github.com/vicpoo/apigestion-solar-go/src/login/domain"
 )
 
 type AlertController struct {
@@ -13,6 +15,7 @@ type AlertController struct {
     putHandler    *PutAlertHandler
     deleteHandler *DeleteAlertHandler
     emailService  *email.EmailService
+    userRepo      udomain.AuthRepository
 }
 
 func NewAlertController(
@@ -21,6 +24,7 @@ func NewAlertController(
     putHandler *PutAlertHandler,
     deleteHandler *DeleteAlertHandler,
     emailService *email.EmailService,
+    userRepo udomain.AuthRepository,
 ) *AlertController {
     return &AlertController{
         postHandler:   postHandler,
@@ -28,6 +32,7 @@ func NewAlertController(
         putHandler:    putHandler,
         deleteHandler: deleteHandler,
         emailService:  emailService,
+        userRepo:      userRepo,
     }
 }
 
@@ -77,12 +82,24 @@ func (c *AlertController) TestEmailAlert(ctx *gin.Context) {
     
     // Validar que el admin_email sea polarsoftsenss@gmail.com
     if request.AdminEmail != "polarsoftsenss@gmail.com" {
-        ctx.JSON(http.StatusBadRequest, gin.H{"error": "El correo del admin debe ser polarsoftsens@gmail.com"})
+        ctx.JSON(http.StatusBadRequest, gin.H{"error": "El correo del admin debe ser polarsoftsenss@gmail.com"})
+        return
+    }
+    
+    // Verificar si el correo del usuario existe en la base de datos
+    exists, err := c.userRepo.EmailExists(ctx.Request.Context(), userEmail)
+    if err != nil {
+        ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error al verificar el correo del usuario"})
+        return
+    }
+    
+    if !exists {
+        ctx.JSON(http.StatusBadRequest, gin.H{"error": "El correo del usuario no existe en la base de datos"})
         return
     }
     
     // Enviar el email
-    err := c.emailService.SendAlertEmail(
+    err = c.emailService.SendAlertEmail(
         userEmail,
         request.Subject,
         request.Message,

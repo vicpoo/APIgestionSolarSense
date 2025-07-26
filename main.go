@@ -49,7 +49,7 @@ func main() {
 		587,
 		os.Getenv("SMTP_USER"),
 		os.Getenv("SMTP_PASS"),
-		"polarsoftsens@gmail.com",
+		"polarsoftsenss@gmail.com",
 	)
 
 // Inicialización del servicio de alertas

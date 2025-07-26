@@ -2,13 +2,16 @@
 package infrastructure
 
 import (
-    "github.com/gin-gonic/gin"
-    "github.com/vicpoo/apigestion-solar-go/src/alerts/application"
-    "github.com/vicpoo/apigestion-solar-go/src/email"
+	"github.com/gin-gonic/gin"
+	"github.com/vicpoo/apigestion-solar-go/src/alerts/application"
+	"github.com/vicpoo/apigestion-solar-go/src/core"
+	"github.com/vicpoo/apigestion-solar-go/src/email"
+	authinfra "github.com/vicpoo/apigestion-solar-go/src/login/infrastructure"
 )
 
 func InitAlertRoutes(router *gin.Engine, emailService *email.EmailService) {
     repo := NewMySQLAlertRepository()
+    db := core.GetBD() // Asegúrate de importar el paquete core
 
     // Crear casos de uso
     postUseCase := application.NewPostAlertUseCase(repo)
@@ -22,8 +25,15 @@ func InitAlertRoutes(router *gin.Engine, emailService *email.EmailService) {
     putHandler := NewPutAlertHandler(putUseCase)
     deleteHandler := NewDeleteAlertHandler(deleteUseCase)
 
-    // Crear controlador
-    controller := NewAlertController(postHandler, getHandler, putHandler, deleteHandler, emailService)
+    // Crear controlador con el userRepo
+    controller := NewAlertController(
+        postHandler,
+        getHandler,
+        putHandler,
+        deleteHandler,
+        emailService,
+        authinfra.NewAuthRepository(db),
+    )
 
     // Configurar rutas
     alertGroup := router.Group("/api/alerts")
@@ -35,7 +45,6 @@ func InitAlertRoutes(router *gin.Engine, emailService *email.EmailService) {
         alertGroup.PUT("/:id/mark-sent", controller.MarkAlertAsSent)
         alertGroup.PUT("/:id", controller.UpdateAlert)
         alertGroup.DELETE("/:id", controller.DeleteAlert)
-        // Nueva ruta para probar envío de emails
         alertGroup.POST("/test-email/:userEmail", controller.TestEmailAlert)
     }
 }
