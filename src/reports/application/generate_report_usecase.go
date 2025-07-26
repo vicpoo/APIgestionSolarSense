@@ -69,7 +69,7 @@ for _, r := range readings {
 
     // 5. Guardar PDF en el sistema de archivos
     fileName := "reporte_" + req.Date + ".pdf"
-    storagePath := "/storage/reports/" + fileName
+    storagePath := "/home/ubuntu/APIgestionSolarSense/storage/reports/" + fileName
     err = pdf.OutputFileAndClose(storagePath)
     if err != nil {
         return nil, err
