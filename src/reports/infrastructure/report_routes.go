@@ -22,6 +22,7 @@ func InitReportRoutes(router *gin.Engine) {
     putHandler := NewPutReportHandler(putUseCase)
     deleteHandler := NewDeleteReportHandler(deleteUseCase)
     generateHandler := NewGenerateReportHandler(generateUseCase)
+    downloadHandler := NewDownloadReportHandler(getUseCase)
 
     // Crear controlador
     controller := NewReportController(getHandler, postHandler, putHandler, deleteHandler)
@@ -37,5 +38,6 @@ func InitReportRoutes(router *gin.Engine) {
         reportGroup.POST("/generate", generateHandler.GenerateReport)
         reportGroup.GET("/", controller.GetAllReports)
         reportGroup.GET("/date/:date", controller.GetReportsByDate)
+        reportGroup.GET("/download/:filename", downloadHandler.DownloadReport)
     }
 }

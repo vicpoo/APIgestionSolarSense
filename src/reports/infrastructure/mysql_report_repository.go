@@ -218,3 +218,27 @@ func (r *MySQLReportRepository) GetReportsByDate(ctx context.Context, date strin
     }
     return reports, nil
 }
+
+func (r *MySQLReportRepository) GetReportByFileName(ctx context.Context, fileName string) (*domain.Report, error) {
+    query := `SELECT id, user_id, sensor_id, file_name, storage_path, 
+                     generated_from, generated_to, created_at, format 
+              FROM reports WHERE file_name = ?`
+    row := r.db.QueryRowContext(ctx, query, fileName)
+    
+    var report domain.Report
+    err := row.Scan(
+        &report.ID,
+        &report.UserID,
+        &report.SensorID,
+        &report.FileName,
+        &report.StoragePath,
+        &report.GeneratedFrom,
+        &report.GeneratedTo,
+        &report.CreatedAt,
+        &report.Format,
+    )
+    if err != nil {
+        return nil, err
+    }
+    return &report, nil
+}

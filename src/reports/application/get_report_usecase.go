@@ -28,3 +28,8 @@ func (uc *GetReportUseCase) GetAllReports(ctx context.Context) ([]domain.Report,
 func (uc *GetReportUseCase) GetReportsByDate(ctx context.Context, date string) ([]domain.Report, error) {
     return uc.repo.GetReportsByDate(ctx, date)
 }
+
+
+func (uc *GetReportUseCase) GetReportByFileName(ctx context.Context, fileName string) (*domain.Report, error) {
+    return uc.repo.GetReportByFileName(ctx, fileName)
+}

@@ -14,4 +14,5 @@ type ReportRepository interface {
 	GetSensorReadingsByDate(ctx context.Context, date string) ([]SensorReading, error)
 	GetAllReports(ctx context.Context)([]Report, error)
 	GetReportsByDate(ctx context.Context, date string) ([]Report, error)
+	GetReportByFileName(ctx context.Context, fileName string) (*Report, error)
 }
