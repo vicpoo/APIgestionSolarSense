@@ -74,7 +74,9 @@ func (r *MySQLReportRepository) GetByID(ctx context.Context, id int) (*domain.Re
 func (r *MySQLReportRepository) GetByUserID(ctx context.Context, userID int) ([]domain.Report, error) {
     query := `SELECT id, user_id, sensor_id, file_name, storage_path, 
                      generated_from, generated_to, created_at, format 
-              FROM reports WHERE user_id = ?`
+              FROM reports WHERE user_id = ?
+              ORDER BY created_at DESC` // Ordenar por fecha descendente
+    
     rows, err := r.db.QueryContext(ctx, query, userID)
     if err != nil {
         return nil, err

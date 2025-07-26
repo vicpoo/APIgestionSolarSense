@@ -2,16 +2,20 @@
 package infrastructure
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/vicpoo/apigestion-solar-go/src/alerts/application"
-	"github.com/vicpoo/apigestion-solar-go/src/core"
-	"github.com/vicpoo/apigestion-solar-go/src/email"
-	authinfra "github.com/vicpoo/apigestion-solar-go/src/login/infrastructure"
+    "github.com/gin-gonic/gin"
+    "github.com/vicpoo/apigestion-solar-go/src/alerts/application"
+    "github.com/vicpoo/apigestion-solar-go/src/core"
+    "github.com/vicpoo/apigestion-solar-go/src/email"
+    authinfra "github.com/vicpoo/apigestion-solar-go/src/login/infrastructure"
+    reportinfra "github.com/vicpoo/apigestion-solar-go/src/reports/infrastructure"
 )
 
 func InitAlertRoutes(router *gin.Engine, emailService *email.EmailService) {
     repo := NewMySQLAlertRepository()
-    db := core.GetBD() // Asegúrate de importar el paquete core
+    db := core.GetBD()
+
+    // Crear repositorio de reportes
+    reportRepo := reportinfra.NewMySQLReportRepository()
 
     // Crear casos de uso
     postUseCase := application.NewPostAlertUseCase(repo)
@@ -25,7 +29,7 @@ func InitAlertRoutes(router *gin.Engine, emailService *email.EmailService) {
     putHandler := NewPutAlertHandler(putUseCase)
     deleteHandler := NewDeleteAlertHandler(deleteUseCase)
 
-    // Crear controlador con el userRepo
+    // Crear controlador con el userRepo y reportRepo
     controller := NewAlertController(
         postHandler,
         getHandler,
@@ -33,6 +37,7 @@ func InitAlertRoutes(router *gin.Engine, emailService *email.EmailService) {
         deleteHandler,
         emailService,
         authinfra.NewAuthRepository(db),
+        reportRepo,
     )
 
     // Configurar rutas
