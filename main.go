@@ -46,7 +46,7 @@ func main() {
 	// Configuración del email
 	emailService := email.NewEmailService(
 		"smtp.gmail.com",
-		587,
+		465,
 		os.Getenv("SMTP_USER"),
 		os.Getenv("SMTP_PASS"),
 		"polarsoftsenss@gmail.com",

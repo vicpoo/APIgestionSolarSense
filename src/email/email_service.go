@@ -2,14 +2,13 @@
 package email
 
 import (
-	"bytes"
-	"crypto/tls"
-	"fmt"
-	"mime/multipart"
-	"path/filepath"
-
-	"net/smtp"
-	"net/textproto"
+    "bytes"
+    "crypto/tls"
+    "fmt"
+    "net/smtp"
+    "net/textproto"
+    "mime/multipart"
+    "path/filepath"
 )
 
 type EmailService struct {
@@ -30,6 +29,7 @@ func NewEmailService(host string, port int, username, password, from string) *Em
     }
 }
 
+// Versión mejorada de SendAlertEmail
 func (es *EmailService) SendAlertEmail(to, subject, body string) error {
     auth := smtp.PlainAuth("", es.smtpUsername, es.smtpPassword, es.smtpHost)
     
@@ -38,48 +38,53 @@ func (es *EmailService) SendAlertEmail(to, subject, body string) error {
         es.fromEmail, to, subject, body,
     ))
 
-    // Configuración alternativa para conexión segura
+    // Configuración TLS mejorada
     tlsconfig := &tls.Config{
-        InsecureSkipVerify: false,
+        InsecureSkipVerify: true, // Cambiado a true para pruebas
         ServerName:         es.smtpHost,
     }
 
-    // Primero intentar con STARTTLS
-    c, err := smtp.Dial(fmt.Sprintf("%s:%d", es.smtpHost, es.smtpPort))
+    // Conexión directa con TLS (SMTPS)
+    conn, err := tls.Dial("tcp", fmt.Sprintf("%s:%d", es.smtpHost, es.smtpPort), tlsconfig)
     if err != nil {
-        return fmt.Errorf("error dialing server: %v", err)
+        return fmt.Errorf("error connecting to SMTP server with TLS: %v", err)
     }
-    defer c.Close()
+    defer conn.Close()
 
-    if err = c.StartTLS(tlsconfig); err != nil {
-        return fmt.Errorf("error starting TLS: %v", err)
+    client, err := smtp.NewClient(conn, es.smtpHost)
+    if err != nil {
+        return fmt.Errorf("error creating SMTP client: %v", err)
     }
+    defer client.Close()
 
-    if err = c.Auth(auth); err != nil {
+    // Autenticación
+    if err = client.Auth(auth); err != nil {
         return fmt.Errorf("error authenticating: %v", err)
     }
 
-    if err = c.Mail(es.fromEmail); err != nil {
+    // Configurar remitente y destinatario
+    if err = client.Mail(es.fromEmail); err != nil {
         return fmt.Errorf("error setting sender: %v", err)
     }
-
-    if err = c.Rcpt(to); err != nil {
+    if err = client.Rcpt(to); err != nil {
         return fmt.Errorf("error setting recipient: %v", err)
     }
 
-    w, err := c.Data()
+    // Enviar el mensaje
+    w, err := client.Data()
     if err != nil {
-        return fmt.Errorf("error preparing data: %v", err)
+        return fmt.Errorf("error preparing email data: %v", err)
     }
     defer w.Close()
 
     if _, err = w.Write(msg); err != nil {
-        return fmt.Errorf("error writing message: %v", err)
+        return fmt.Errorf("error writing email content: %v", err)
     }
 
     return nil
 }
 
+// Versión mejorada de SendAlertEmailWithAttachment
 func (es *EmailService) SendAlertEmailWithAttachment(to, subject, body string, attachment *Attachment) error {
     // Crear el buffer para el mensaje MIME
     var buf bytes.Buffer
@@ -123,16 +128,16 @@ func (es *EmailService) SendAlertEmailWithAttachment(to, subject, body string, a
 
     writer.Close()
 
-    // Configuración TLS
+    // Configuración TLS mejorada
     tlsconfig := &tls.Config{
-        InsecureSkipVerify: false,
+        InsecureSkipVerify: true, // Cambiado a true para pruebas
         ServerName:         es.smtpHost,
     }
 
-    // Conexión SMTP
+    // Conexión directa con TLS (SMTPS)
     conn, err := tls.Dial("tcp", fmt.Sprintf("%s:%d", es.smtpHost, es.smtpPort), tlsconfig)
     if err != nil {
-        return fmt.Errorf("error connecting to SMTP server: %v", err)
+        return fmt.Errorf("error connecting to SMTP server with TLS: %v", err)
     }
     defer conn.Close()
 
