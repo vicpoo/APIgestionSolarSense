@@ -372,3 +372,24 @@ func (r *AuthRepositoryImpl) GetUserMembershipType(ctx context.Context, userID i
 
 	return membershipType, nil
 }
+func (r *AuthRepositoryImpl) GetBySensorID(ctx context.Context, sensorID int) (*domain.User, error) {
+	query := `
+		SELECT u.id, u.email, u.username, u.auth_type, u.is_active, u.is_admin 
+		FROM users u
+		JOIN sensors s ON u.id = s.user_id
+		WHERE s.id = ?`
+	
+	var user domain.User
+	err := r.db.QueryRowContext(ctx, query, sensorID).Scan(
+		&user.ID,
+		&user.Email,
+		&user.Username,
+		&user.AuthType,
+		&user.IsActive,
+		&user.IsAdmin,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return &user, nil
+}

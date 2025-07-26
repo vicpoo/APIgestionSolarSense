@@ -15,4 +15,5 @@ type AuthRepository interface {
 	GetAllUsers(ctx context.Context) ([]*User, error)
 	GetUserByID(ctx context.Context, userID int64) (*User, error)
 	GetUserMembershipType(ctx context.Context, userID int64) (string, error)
+	GetBySensorID(ctx context.Context, sensorID int) (*User, error) // Añadido este método
 }
