@@ -12,4 +12,6 @@ type ReportRepository interface {
 	Update(ctx context.Context, report *Report) error
 	Delete(ctx context.Context, id int) error
 	GetSensorReadingsByDate(ctx context.Context, date string) ([]SensorReading, error)
+	GetAllReports(ctx context.Context)([]Report, error)
+	GetReportsByDate(ctx context.Context, date string) ([]Report, error)
 }

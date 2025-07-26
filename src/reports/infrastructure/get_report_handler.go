@@ -47,3 +47,23 @@ func (h *GetReportHandler) GetUserReports(c *gin.Context) {
 
     c.JSON(http.StatusOK, reports)
 }
+
+
+func (h *GetReportHandler) GetAllReports(c *gin.Context) {
+    reports, err := h.useCase.GetAllReports(c.Request.Context())
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        return
+    }
+    c.JSON(http.StatusOK, reports)
+}
+
+func (h *GetReportHandler) GetReportsByDate(c *gin.Context) {
+    date := c.Param("date")
+    reports, err := h.useCase.GetReportsByDate(c.Request.Context(), date)
+    if err != nil {
+        c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        return
+    }
+    c.JSON(http.StatusOK, reports)
+}

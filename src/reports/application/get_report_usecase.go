@@ -21,3 +21,10 @@ func (uc *GetReportUseCase) GetReport(ctx context.Context, id int) (*domain.Repo
 func (uc *GetReportUseCase) GetUserReports(ctx context.Context, userID int) ([]domain.Report, error) {
     return uc.repo.GetByUserID(ctx, userID)
 }
+func (uc *GetReportUseCase) GetAllReports(ctx context.Context) ([]domain.Report, error) {
+    return uc.repo.GetAllReports(ctx)
+}
+
+func (uc *GetReportUseCase) GetReportsByDate(ctx context.Context, date string) ([]domain.Report, error) {
+    return uc.repo.GetReportsByDate(ctx, date)
+}

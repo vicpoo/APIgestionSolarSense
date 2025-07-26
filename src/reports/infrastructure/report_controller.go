@@ -43,3 +43,11 @@ func (c *ReportController) UpdateReport(ctx *gin.Context) {
 func (c *ReportController) DeleteReport(ctx *gin.Context) {
     c.deleteHandler.DeleteReport(ctx)
 }
+
+func (c *ReportController) GetAllReports(ctx *gin.Context) {
+    c.getHandler.GetAllReports(ctx)
+}
+
+func (c *ReportController) GetReportsByDate(ctx *gin.Context) {
+    c.getHandler.GetReportsByDate(ctx)
+}

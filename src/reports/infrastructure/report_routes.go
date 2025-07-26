@@ -35,5 +35,7 @@ func InitReportRoutes(router *gin.Engine) {
         reportGroup.PUT("/:id", controller.UpdateReport)
         reportGroup.DELETE("/:id", controller.DeleteReport)
         reportGroup.POST("/generate", generateHandler.GenerateReport)
+        reportGroup.GET("/", controller.GetAllReports)
+        reportGroup.GET("/date/:date", controller.GetReportsByDate)
     }
 }

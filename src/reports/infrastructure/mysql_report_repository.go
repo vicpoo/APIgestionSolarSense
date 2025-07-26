@@ -153,3 +153,68 @@ func (r *MySQLReportRepository) GetSensorReadingsByDate(ctx context.Context, dat
     }
     return readings, nil
 }
+
+func (r *MySQLReportRepository) GetAllReports(ctx context.Context) ([]domain.Report, error) {
+    query := `SELECT id, user_id, sensor_id, file_name, storage_path, 
+                     generated_from, generated_to, created_at, format 
+              FROM reports`
+    rows, err := r.db.QueryContext(ctx, query)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var reports []domain.Report
+    for rows.Next() {
+        var report domain.Report
+        err := rows.Scan(
+            &report.ID,
+            &report.UserID,
+            &report.SensorID,
+            &report.FileName,
+            &report.StoragePath,
+            &report.GeneratedFrom,
+            &report.GeneratedTo,
+            &report.CreatedAt,
+            &report.Format,
+        )
+        if err != nil {
+            return nil, err
+        }
+        reports = append(reports, report)
+    }
+    return reports, nil
+}
+
+func (r *MySQLReportRepository) GetReportsByDate(ctx context.Context, date string) ([]domain.Report, error) {
+    query := `SELECT id, user_id, sensor_id, file_name, storage_path, 
+                     generated_from, generated_to, created_at, format 
+              FROM reports 
+              WHERE DATE(created_at) = ?`
+    rows, err := r.db.QueryContext(ctx, query, date)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var reports []domain.Report
+    for rows.Next() {
+        var report domain.Report
+        err := rows.Scan(
+            &report.ID,
+            &report.UserID,
+            &report.SensorID,
+            &report.FileName,
+            &report.StoragePath,
+            &report.GeneratedFrom,
+            &report.GeneratedTo,
+            &report.CreatedAt,
+            &report.Format,
+        )
+        if err != nil {
+            return nil, err
+        }
+        reports = append(reports, report)
+    }
+    return reports, nil
+}
