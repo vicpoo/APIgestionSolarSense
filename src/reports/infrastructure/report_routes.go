@@ -14,12 +14,14 @@ func InitReportRoutes(router *gin.Engine) {
     postUseCase := application.NewPostReportUseCase(repo)
     putUseCase := application.NewPutReportUseCase(repo)
     deleteUseCase := application.NewDeleteReportUseCase(repo)
+    generateUseCase := application.NewGenerateReportUseCase(repo)
 
     // Crear handlers
     getHandler := NewGetReportHandler(getUseCase)
     postHandler := NewPostReportHandler(postUseCase)
     putHandler := NewPutReportHandler(putUseCase)
     deleteHandler := NewDeleteReportHandler(deleteUseCase)
+    generateHandler := NewGenerateReportHandler(generateUseCase)
 
     // Crear controlador
     controller := NewReportController(getHandler, postHandler, putHandler, deleteHandler)
@@ -32,5 +34,6 @@ func InitReportRoutes(router *gin.Engine) {
         reportGroup.GET("/user/:user_id", controller.GetUserReports)
         reportGroup.PUT("/:id", controller.UpdateReport)
         reportGroup.DELETE("/:id", controller.DeleteReport)
+        reportGroup.POST("/generate", generateHandler.GenerateReport)
     }
 }

@@ -119,3 +119,37 @@ func (r *MySQLReportRepository) Update(ctx context.Context, report *domain.Repor
     )
     return err
 }
+
+
+func (r *MySQLReportRepository) GetSensorReadingsByDate(ctx context.Context, date string) ([]domain.SensorReading, error) {
+    query := `
+        SELECT id, sensor_id, temperature, humidity, pressure, voltage, current, recorded_at, potencia
+        FROM sensor_readings
+        WHERE DATE(recorded_at) = ?`
+    rows, err := r.db.QueryContext(ctx, query, date)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+
+    var readings []domain.SensorReading
+    for rows.Next() {
+        var reading domain.SensorReading
+        err := rows.Scan(
+            &reading.ID,
+            &reading.SensorID,
+            &reading.Temperature,
+            &reading.Humidity,
+            &reading.Pressure,
+            &reading.Voltage,
+            &reading.Current,
+            &reading.RecordedAt,
+            &reading.Potencia,
+        )
+        if err != nil {
+            return nil, err
+        }
+        readings = append(readings, reading)
+    }
+    return readings, nil
+}
