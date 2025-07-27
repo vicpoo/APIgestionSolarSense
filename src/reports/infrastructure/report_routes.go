@@ -40,6 +40,6 @@ func InitReportRoutes(router *gin.Engine) {
         reportGroup.POST("/generate/:email", generateHandler.GenerateReport)
         reportGroup.GET("/", controller.GetAllReports)
         reportGroup.GET("/date/:date", controller.GetReportsByDate)
-        reportGroup.GET("/download/:filename", downloadHandler.DownloadReport)
+        reportGroup.GET("/download/:filename/:email", downloadHandler.DownloadReport)
     }
 }
