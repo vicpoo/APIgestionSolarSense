@@ -140,7 +140,9 @@ func (r *MySQLReportRepository) GetSensorReadingsByDate(ctx context.Context, dat
     query := `
         SELECT id, sensor_id, temperature, humidity, pressure, voltage, current, recorded_at, potencia
         FROM sensor_readings
-        WHERE DATE(recorded_at) = ?`
+        WHERE DATE(recorded_at) = ?
+        ORDER BY recorded_at DESC
+        LIMIT 50`  // Solo los últimos 50 registros
     rows, err := r.db.QueryContext(ctx, query, date)
     if err != nil {
         return nil, err
