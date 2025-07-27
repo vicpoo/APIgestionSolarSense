@@ -83,19 +83,20 @@ func (r *AuthRepositoryImpl) FindUserByEmail(ctx context.Context, email string) 
     var passwordHash string
     var isAdmin bool
 
-    // Consulta mejorada con INNER JOIN para garantizar consistencia
+    // Consulta modificada para manejar ambos tipos de autenticación
     err := r.db.QueryRowContext(ctx,
         `SELECT 
             u.id, 
             u.email, 
-            u.username,
+            COALESCE(u.username, u.display_name) as username,
             ea.password_hash,
             CASE WHEN m.type = 'admin' THEN 1 ELSE 0 END as is_admin,
-            u.is_active
+            u.is_active,
+            u.auth_type
          FROM users u
-         INNER JOIN email_auth ea ON u.id = ea.user_id
+         LEFT JOIN email_auth ea ON u.id = ea.user_id AND u.auth_type = 'email'
          LEFT JOIN memberships m ON u.id = m.user_id
-         WHERE u.email = ? AND u.auth_type = 'email'`,
+         WHERE u.email = ?`,
         email,
     ).Scan(
         &user.ID,
@@ -104,6 +105,7 @@ func (r *AuthRepositoryImpl) FindUserByEmail(ctx context.Context, email string) 
         &passwordHash,
         &isAdmin,
         &user.IsActive,
+        &user.AuthType,
     )
 
     if err != nil {
@@ -117,7 +119,6 @@ func (r *AuthRepositoryImpl) FindUserByEmail(ctx context.Context, email string) 
         return nil, "", errors.New("account is not active")
     }
 
-    user.AuthType = "email"
     user.IsAdmin = isAdmin
     return &user, passwordHash, nil
 }
@@ -404,4 +405,45 @@ func (r *AuthRepositoryImpl) EmailExists(ctx context.Context, email string) (boo
     }
     
     return exists, nil
+}
+
+
+func (r *AuthRepositoryImpl) GetBasicUserInfo(ctx context.Context, email string) (*domain.User, error) {
+    var user domain.User
+    var isAdmin bool
+
+    err := r.db.QueryRowContext(ctx,
+        `SELECT 
+            u.id, 
+            u.email, 
+            COALESCE(u.username, u.display_name) as username,
+            CASE WHEN m.type = 'admin' THEN 1 ELSE 0 END as is_admin,
+            u.is_active,
+            u.auth_type
+         FROM users u
+         LEFT JOIN memberships m ON u.id = m.user_id
+         WHERE u.email = ?`,
+        email,
+    ).Scan(
+        &user.ID,
+        &user.Email,
+        &user.Username,
+        &isAdmin,
+        &user.IsActive,
+        &user.AuthType,
+    )
+
+    if err != nil {
+        if err == sql.ErrNoRows {
+            return nil, domain.ErrInvalidCredentials
+        }
+        return nil, fmt.Errorf("database error: %v", err)
+    }
+
+    if !user.IsActive {
+        return nil, errors.New("account is not active")
+    }
+
+    user.IsAdmin = isAdmin
+    return &user, nil
 }

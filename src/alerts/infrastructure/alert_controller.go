@@ -103,16 +103,16 @@ func (c *AlertController) TestEmailAlert(ctx *gin.Context) {
         return
     }
 
-    // Obtener información completa del usuario (corregido el error de asignación)
+    // Obtener información básica del usuario (sin password hash para usuarios de Google)
     user, _, err := c.userRepo.FindUserByEmail(ctx.Request.Context(), userEmail)
     if err != nil {
-        ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error al obtener información del usuario"})
+        ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error al obtener información del usuario: " + err.Error()})
         return
     }
 
     reports, err := c.reportRepo.GetByUserID(ctx.Request.Context(), int(user.ID))
     if err != nil {
-        ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error al obtener reportes del usuario"})
+        ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error al obtener reportes del usuario: " + err.Error()})
         return
     }
 
@@ -125,7 +125,7 @@ func (c *AlertController) TestEmailAlert(ctx *gin.Context) {
         )
         
         if err != nil {
-            ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+            ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error al enviar email: " + err.Error()})
             return
         }
         
@@ -147,7 +147,7 @@ func (c *AlertController) TestEmailAlert(ctx *gin.Context) {
     // Leer el archivo PDF desde el sistema de archivos
     pdfData, err := os.ReadFile(latestReport.StoragePath)
     if err != nil {
-        ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error al leer el archivo PDF"})
+        ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error al leer el archivo PDF: " + err.Error()})
         return
     }
 
@@ -167,7 +167,7 @@ func (c *AlertController) TestEmailAlert(ctx *gin.Context) {
     )
     
     if err != nil {
-        ctx.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+        ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error al enviar email con adjunto: " + err.Error()})
         return
     }
     
