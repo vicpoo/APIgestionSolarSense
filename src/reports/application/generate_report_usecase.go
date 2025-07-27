@@ -26,7 +26,7 @@ func (uc *GenerateReportUseCase) GetUserIDByEmail(ctx context.Context, email str
     var userID int
     err := uc.db.QueryRowContext(ctx, query, email).Scan(&userID)
     if err != nil {
-        return 0, fmt.Errorf("no se pudo obtener el ID del usuario: %v", err)
+        return 0, fmt.Errorf("no se pudo obtener el ID del usuario: %v. Nota: Asegúrate que el email existe en la tabla users", err)
     }
     return userID, nil
 }

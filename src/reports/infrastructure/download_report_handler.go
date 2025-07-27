@@ -8,6 +8,7 @@ import (
     "github.com/vicpoo/apigestion-solar-go/src/login/domain"
     authinfra "github.com/vicpoo/apigestion-solar-go/src/login/infrastructure"
     "github.com/vicpoo/apigestion-solar-go/src/core"
+    "strconv"
 )
 
 type DownloadReportHandler struct {
@@ -30,20 +31,37 @@ func (h *DownloadReportHandler) DownloadReport(c *gin.Context) {
     // 1. Verificar que el usuario existe
     user, err := h.authRepo.GetBasicUserInfo(c.Request.Context(), userEmail)
     if err != nil {
-        c.JSON(http.StatusNotFound, gin.H{"error": "Usuario no encontrado"})
+        c.JSON(http.StatusNotFound, gin.H{
+            "error": "Usuario no encontrado",
+            "details": err.Error(),
+        })
         return
     }
 
     // 2. Buscar el reporte en la BD
     report, err := h.useCase.GetReportByFileName(c.Request.Context(), fileName)
     if err != nil {
-        c.JSON(http.StatusNotFound, gin.H{"error": "Reporte no encontrado"})
+        c.JSON(http.StatusNotFound, gin.H{
+            "error": "Reporte no encontrado",
+            "details": err.Error(),
+        })
         return
     }
 
+    // Debug: Mostrar IDs para diagnóstico
+    c.Writer.Header().Add("X-Debug-User-ID", strconv.FormatInt(user.ID, 10))
+    c.Writer.Header().Add("X-Debug-Report-User-ID", strconv.Itoa(report.UserID))
+
     // 3. Verificar que el usuario es el dueño del reporte
     if report.UserID != int(user.ID) {
-        c.JSON(http.StatusForbidden, gin.H{"error": "No tienes permiso para descargar este reporte"})
+        c.JSON(http.StatusForbidden, gin.H{
+            "error": "No tienes permiso para descargar este reporte",
+            "details": gin.H{
+                "user_id": user.ID,
+                "report_user_id": report.UserID,
+                "email": userEmail,
+            },
+        })
         return
     }
 
