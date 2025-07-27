@@ -80,10 +80,9 @@ func (r *AuthRepositoryImpl) CreateUserWithEmail(ctx context.Context, email, use
 }
 func (r *AuthRepositoryImpl) FindUserByEmail(ctx context.Context, email string) (*domain.User, string, error) {
     var user domain.User
-    var passwordHash string
+    var passwordHash sql.NullString // Cambiado a sql.NullString
     var isAdmin bool
 
-    // Consulta modificada para manejar ambos tipos de autenticación
     err := r.db.QueryRowContext(ctx,
         `SELECT 
             u.id, 
@@ -94,7 +93,7 @@ func (r *AuthRepositoryImpl) FindUserByEmail(ctx context.Context, email string) 
             u.is_active,
             u.auth_type
          FROM users u
-         LEFT JOIN email_auth ea ON u.id = ea.user_id AND u.auth_type = 'email'
+         LEFT JOIN email_auth ea ON u.id = ea.user_id
          LEFT JOIN memberships m ON u.id = m.user_id
          WHERE u.email = ?`,
         email,
@@ -102,7 +101,7 @@ func (r *AuthRepositoryImpl) FindUserByEmail(ctx context.Context, email string) 
         &user.ID,
         &user.Email,
         &user.Username,
-        &passwordHash,
+        &passwordHash, // Ahora acepta NULL
         &isAdmin,
         &user.IsActive,
         &user.AuthType,
@@ -120,7 +119,14 @@ func (r *AuthRepositoryImpl) FindUserByEmail(ctx context.Context, email string) 
     }
 
     user.IsAdmin = isAdmin
-    return &user, passwordHash, nil
+    
+    // Manejar el caso cuando passwordHash es NULL
+    var actualPasswordHash string
+    if passwordHash.Valid {
+        actualPasswordHash = passwordHash.String
+    }
+    
+    return &user, actualPasswordHash, nil
 }
 func (r *AuthRepositoryImpl) FindUserByID(ctx context.Context, id int64) (*domain.User, string, error) {
 	var user domain.User
