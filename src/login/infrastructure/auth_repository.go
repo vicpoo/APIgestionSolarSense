@@ -677,3 +677,11 @@ func (r *AuthRepositoryImpl) GetAllGoogleUsers(ctx context.Context) ([]*domain.U
 
     return users, nil
 }
+
+func (r *AuthRepositoryImpl) GetUserByEmail(ctx context.Context, email string) (*domain.User, error) {
+    user, _, err := r.FindUserByEmail(ctx, email)
+    if err != nil {
+        return nil, err
+    }
+    return user, nil
+}

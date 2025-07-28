@@ -33,7 +33,7 @@ func InitAuthRoutes(router *gin.Engine) {
         authGroup.POST("/google", loginController.GoogleAuth)
         authGroup.GET("/public/users/:id", loginController.GetPublicUserInfo)
         authGroup.PUT("/user/actualizar", loginController.UpdateUserProfile)
-        authGroup.PUT("/user/actualizar/google", loginController.UpdateGoogleUserProfile)
+       authGroup.PUT("/user/actualizar/google/:email", loginController.UpdateGoogleUserProfileByEmail)
             authGroup.GET("/google/users/:uid", loginController.GetGoogleUserByUID)
         authGroup.GET("/google/users", loginController.GetAllGoogleUsers)
         // Endpoints protegidos para usuarios normales

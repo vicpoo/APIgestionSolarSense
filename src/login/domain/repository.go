@@ -23,4 +23,7 @@ type AuthRepository interface {
     UpdateUsername(ctx context.Context, userID int64, newUsername string) error
 	   GetGoogleUserByUID(ctx context.Context, uid string) (*User, error)
     GetAllGoogleUsers(ctx context.Context) ([]*User, error)
+	GetUserByEmail(ctx context.Context, email string) (*User, error)
+	
+	
 }

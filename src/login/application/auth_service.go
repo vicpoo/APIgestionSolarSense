@@ -22,31 +22,31 @@ func NewAuthService(repo domain.AuthRepository) domain.AuthService {
 }
 
 func (s *AuthServiceImpl) RegisterWithEmail(ctx context.Context, creds domain.UserCredentials) (*domain.AuthResponse, error) {
-    // Validaciones adicionales
-    if len(creds.Password) < 8 {
-        return nil, errors.New("password must be at least 8 characters")
-    }
-    if len(creds.Username) < 3 {
-        return nil, errors.New("username must be at least 3 characters")
-    }
+	// Validaciones adicionales
+	if len(creds.Password) < 8 {
+		return nil, errors.New("password must be at least 8 characters")
+	}
+	if len(creds.Username) < 3 {
+		return nil, errors.New("username must be at least 3 characters")
+	}
 
-    hashedPassword, err := bcrypt.GenerateFromPassword([]byte(creds.Password), bcrypt.DefaultCost)
-    if err != nil {
-        return nil, errors.New("could not hash password")
-    }
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(creds.Password), bcrypt.DefaultCost)
+	if err != nil {
+		return nil, errors.New("could not hash password")
+	}
 
-    userID, err := s.repo.CreateUserWithEmail(ctx, creds.Email, creds.Username, string(hashedPassword))
-    if err != nil {
-        return nil, fmt.Errorf("registration failed: %w", err)
-    }
+	userID, err := s.repo.CreateUserWithEmail(ctx, creds.Email, creds.Username, string(hashedPassword))
+	if err != nil {
+		return nil, fmt.Errorf("registration failed: %w", err)
+	}
 
-    return &domain.AuthResponse{
-        Success: true,
-        Message: "User registered successfully",
-        UserID:  userID,
-        Email:   creds.Email,
-        Username: creds.Username,
-    }, nil
+	return &domain.AuthResponse{
+		Success:  true,
+		Message:  "User registered successfully",
+		UserID:   userID,
+		Email:    creds.Email,
+		Username: creds.Username,
+	}, nil
 }
 func (s *AuthServiceImpl) LoginWithEmail(ctx context.Context, creds domain.UserCredentials) (*domain.AuthResponse, error) {
 	if creds.Email == "" || creds.Password == "" {
@@ -134,6 +134,69 @@ func getClaimValue(claims map[string]interface{}, key string, defaultValue strin
 	return defaultValue
 }
 
+func (s *AuthServiceImpl) UpdateGoogleUserProfile(ctx context.Context, userID int64, displayName string) (*domain.AuthResponse, error) {
+    // Obtener el usuario actual para verificar que es de Google
+    user, err := s.repo.GetUserByID(ctx, userID)
+    if err != nil {
+        return nil, fmt.Errorf("user not found: %w", err)
+    }
+
+    // Verificar que el auth_type sea google
+    if user.AuthType != "google" {
+        return nil, errors.New("only google users can be updated with this endpoint")
+    }
+
+    // Actualizar solo el display_name
+    if displayName != "" {
+        err = s.repo.UpdateDisplayName(ctx, userID, displayName)
+        if err != nil {
+            return nil, fmt.Errorf("could not update display_name: %w", err)
+        }
+    }
+
+    return &domain.AuthResponse{
+        Success: true,
+        Message: "Google user profile updated successfully",
+        UserID:  userID,
+    }, nil
+}
+
+// Implementación correcta de GetUserByEmail
+func (s *AuthServiceImpl) GetUserByEmail(ctx context.Context, email string) (*domain.User, error) {
+    user, _, err := s.repo.FindUserByEmail(ctx, email)
+    if err != nil {
+        return nil, err
+    }
+    return user, nil
+}
+
+// Implementación de UpdateGoogleUserProfileByEmail
+func (s *AuthServiceImpl) UpdateGoogleUserProfileByEmail(ctx context.Context, email, displayName string) (*domain.AuthResponse, error) {
+    // Obtener el usuario por email
+    user, err := s.repo.GetUserByEmail(ctx, email)
+    if err != nil {
+        return nil, fmt.Errorf("user not found: %w", err)
+    }
+
+    // Verificar que el auth_type sea google
+    if user.AuthType != "google" {
+        return nil, errors.New("only google users can be updated with this endpoint")
+    }
+
+    // Actualizar solo el display_name
+    if displayName != "" {
+        err = s.repo.UpdateDisplayName(ctx, user.ID, displayName)
+        if err != nil {
+            return nil, fmt.Errorf("could not update display_name: %w", err)
+        }
+    }
+
+    return &domain.AuthResponse{
+        Success: true,
+        Message: "Google user profile updated successfully",
+        UserID:  user.ID,
+    }, nil
+}
 func (s *AuthServiceImpl) UpdateUserProfile(ctx context.Context, userID int64, email, username, displayName, authType string) (*domain.AuthResponse, error) {
     // Obtener el usuario actual para verificar el auth_type
     user, err := s.repo.GetUserByID(ctx, userID)
@@ -174,33 +237,6 @@ func (s *AuthServiceImpl) UpdateUserProfile(ctx context.Context, userID int64, e
     return &domain.AuthResponse{
         Success: true,
         Message: "User profile updated successfully",
-        UserID:  userID,
-    }, nil
-}
-
-func (s *AuthServiceImpl) UpdateGoogleUserProfile(ctx context.Context, userID int64, displayName string) (*domain.AuthResponse, error) {
-    // Obtener el usuario actual para verificar que es de Google
-    user, err := s.repo.GetUserByID(ctx, userID)
-    if err != nil {
-        return nil, fmt.Errorf("user not found: %w", err)
-    }
-
-    // Verificar que el auth_type sea google
-    if user.AuthType != "google" {
-        return nil, errors.New("only google users can be updated with this endpoint")
-    }
-
-    // Actualizar solo el display_name
-    if displayName != "" {
-        err = s.repo.UpdateDisplayName(ctx, userID, displayName)
-        if err != nil {
-            return nil, fmt.Errorf("could not update display_name: %w", err)
-        }
-    }
-
-    return &domain.AuthResponse{
-        Success: true,
-        Message: "Google user profile updated successfully",
         UserID:  userID,
     }, nil
 }
