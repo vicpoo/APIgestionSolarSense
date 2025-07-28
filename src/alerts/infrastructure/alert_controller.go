@@ -2,13 +2,16 @@
 package infrastructure
 
 import (
+	"fmt"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/vicpoo/apigestion-solar-go/src/email"
 	udomain "github.com/vicpoo/apigestion-solar-go/src/login/domain"
-	
+
+	"github.com/vicpoo/apigestion-solar-go/src/reports/domain"
 	rdomain "github.com/vicpoo/apigestion-solar-go/src/reports/domain"
 )
 
@@ -181,4 +184,127 @@ func (c *AlertController) TestEmailAlert(ctx *gin.Context) {
             "file_name": latestReport.FileName,
         },
     })
+}
+
+
+func (c *AlertController) CheckSensorAlerts(ctx *gin.Context) {
+    userEmail := ctx.Param("userEmail")
+    
+    // Verificar que el correo del admin sea el correcto
+    var request struct {
+        AdminEmail string `json:"admin_email"`
+    }
+    
+    if err := ctx.ShouldBindJSON(&request); err != nil {
+        ctx.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+        return
+    }
+    
+    if request.AdminEmail != "polarsoftsenss@gmail.com" {
+        ctx.JSON(http.StatusBadRequest, gin.H{"error": "El correo del admin debe ser polarsoftsenss@gmail.com"})
+        return
+    }
+    
+    // Verificar que el usuario existe
+    exists, err := c.userRepo.EmailExists(ctx.Request.Context(), userEmail)
+    if err != nil {
+        ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error al verificar el correo del usuario"})
+        return
+    }
+    
+    if !exists {
+        ctx.JSON(http.StatusBadRequest, gin.H{"error": "El correo del usuario no existe en la base de datos"})
+        return
+    }
+
+    // Obtener la fecha actual
+    currentDate := time.Now().Format("2006-01-02")
+    
+    // Obtener los últimos 5 registros de sensor_readings para la fecha actual
+    readings, err := c.reportRepo.GetSensorReadingsByDate(ctx.Request.Context(), currentDate)
+    if err != nil {
+        ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Error al obtener lecturas de sensores"})
+        return
+    }
+    
+    // Limitar a los últimos 5 registros
+    var lastReadings []domain.SensorReading
+    if len(readings) > 5 {
+        lastReadings = readings[:5]
+    } else {
+        lastReadings = readings
+    }
+    
+    // Verificar condiciones de alerta
+    var alertMessages []string
+    
+    for _, reading := range lastReadings {
+        if reading.Humidity != nil && *reading.Humidity > 80 {
+            alertMessages = append(alertMessages, 
+                fmt.Sprintf("Alerta de humedad: %.2f%% (mayor que 80%%)", *reading.Humidity))
+        }
+        
+        if reading.Temperature != nil && *reading.Temperature > 35 {
+            alertMessages = append(alertMessages, 
+                fmt.Sprintf("Alerta de temperatura: %.2f°C (mayor que 35°C)", *reading.Temperature))
+        }
+        
+        if reading.Pressure != nil && *reading.Pressure < 990 {
+            alertMessages = append(alertMessages, 
+                fmt.Sprintf("Alerta de presión: %.2fhPa (menor que 990hPa)", *reading.Pressure))
+        }
+    }
+    
+    // Si no hay alertas, responder sin enviar correo
+    if len(alertMessages) == 0 {
+        ctx.JSON(http.StatusOK, gin.H{
+            "status": "no_alerts",
+            "message": "No se detectaron condiciones de alerta",
+            "readings": lastReadings,
+        })
+        return
+    }
+    
+    // Construir el mensaje del correo
+    subject := "Alertas de sensores detectadas"
+    body := "Se han detectado las siguientes condiciones de alerta:\n\n"
+    for _, msg := range alertMessages {
+        body += "- " + msg + "\n"
+    }
+    body += "\nÚltimas lecturas:\n"
+    for _, reading := range lastReadings {
+        body += fmt.Sprintf("- Sensor %d: Temp=%.2f°C, Hum=%.2f%%, Pres=%.2fhPa, Registrado: %s\n",
+            reading.SensorID,
+            safeFloat(reading.Temperature),
+            safeFloat(reading.Humidity),
+            safeFloat(reading.Pressure),
+            reading.RecordedAt.Format("2006-01-02 15:04:05"))
+    }
+    
+    // Enviar el correo
+    err = c.emailService.SendAlertEmail(userEmail, subject, body)
+    if err != nil {
+        ctx.JSON(http.StatusInternalServerError, gin.H{
+            "error": "Error al enviar el correo de alerta",
+            "details": err.Error(),
+        })
+        return
+    }
+    
+    ctx.JSON(http.StatusOK, gin.H{
+        "status": "alerts_sent",
+        "message": "Alertas enviadas por correo",
+        "alerts": alertMessages,
+        "readings": lastReadings,
+        "user_email": userEmail,
+        "admin_email": request.AdminEmail,
+    })
+}
+
+// Función auxiliar para manejar valores nulos
+func safeFloat(f *float64) float64 {
+    if f == nil {
+        return 0
+    }
+    return *f
 }

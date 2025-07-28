@@ -51,5 +51,6 @@ func InitAlertRoutes(router *gin.Engine, emailService *email.EmailService) {
         alertGroup.PUT("/:id", controller.UpdateAlert)
         alertGroup.DELETE("/:id", controller.DeleteAlert)
         alertGroup.POST("/test-email/:userEmail", controller.TestEmailAlert)
+        alertGroup.POST("/check-alerts/:userEmail", controller.CheckSensorAlerts)
     }
 }
