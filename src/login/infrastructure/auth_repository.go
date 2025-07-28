@@ -244,8 +244,68 @@ func (r *AuthRepositoryImpl) DeleteUserByEmail(ctx context.Context, email string
 	return tx.Commit()
 }
 
+
+func (r *AuthRepositoryImpl) GetUserByID(ctx context.Context, userID int64) (*domain.User, error) {
+    query := `
+        SELECT 
+            id, 
+            uid, 
+            email, 
+            display_name, 
+            username,
+            photo_url, 
+            provider, 
+            auth_type, 
+            is_active, 
+            created_at, 
+            last_login
+        FROM users
+        WHERE id = ?`
+
+    var user domain.User
+    var (
+        uid, username, photoURL sql.NullString
+        lastLogin               sql.NullTime
+    )
+
+    err := r.db.QueryRowContext(ctx, query, userID).Scan(
+        &user.ID,
+        &uid,
+        &user.Email,
+        &user.Username, // display_name como username
+        &username,
+        &photoURL,
+        &user.Provider,
+        &user.AuthType,
+        &user.IsActive,
+        &user.CreatedAt,
+        &lastLogin,
+    )
+    if err != nil {
+        if err == sql.ErrNoRows {
+            return nil, fmt.Errorf("user not found")
+        }
+        return nil, fmt.Errorf("could not get user: %w", err)
+    }
+
+    if uid.Valid {
+        user.UID = uid.String
+    }
+    if photoURL.Valid {
+        user.PhotoURL = photoURL.String
+    }
+    if !username.Valid {
+        user.Username = "sin_usuario"
+    }
+    if lastLogin.Valid {
+        user.LastLogin = lastLogin.Time
+    }
+
+    return &user, nil
+}
+
 func (r *AuthRepositoryImpl) GetAllUsers(ctx context.Context) ([]*domain.User, error) {
-	query := `
+    query := `
         SELECT 
             id, 
             uid, 
@@ -261,107 +321,60 @@ func (r *AuthRepositoryImpl) GetAllUsers(ctx context.Context) ([]*domain.User, e
         FROM users
         ORDER BY created_at DESC`
 
-	rows, err := r.db.QueryContext(ctx, query)
-	if err != nil {
-		return nil, fmt.Errorf("could not get users: %w", err)
-	}
-	defer rows.Close()
+    rows, err := r.db.QueryContext(ctx, query)
+    if err != nil {
+        return nil, fmt.Errorf("could not get users: %w", err)
+    }
+    defer rows.Close()
 
-	var users []*domain.User
-	for rows.Next() {
-		var user domain.User
-		var (
-			uid, username, photoURL sql.NullString
-			lastLogin               sql.NullTime // Para manejar NULL en last_login
-		)
+    var users []*domain.User
+    for rows.Next() {
+        var user domain.User
+        var (
+            uid, username, photoURL sql.NullString
+            lastLogin               sql.NullTime
+        )
 
-		err := rows.Scan(
-			&user.ID,
-			&uid,
-			&user.Email,
-			&user.Username, // display_name como username
-			&username,
-			&photoURL,
-			&user.Provider,
-			&user.AuthType,
-			&user.IsActive,
-			&user.CreatedAt,
-			&lastLogin, // Escaneamos como NullTime
-		)
-		if err != nil {
-			return nil, fmt.Errorf("could not scan user: %w", err)
-		}
+        err := rows.Scan(
+            &user.ID,
+            &uid,
+            &user.Email,
+            &user.Username,
+            &username,
+            &photoURL,
+            &user.Provider,
+            &user.AuthType,
+            &user.IsActive,
+            &user.CreatedAt,
+            &lastLogin,
+        )
+        if err != nil {
+            return nil, fmt.Errorf("could not scan user: %w", err)
+        }
 
-		// Manejar campos NULL
-		if uid.Valid {
-			user.UID = uid.String
-		}
-		if photoURL.Valid {
-			user.PhotoURL = photoURL.String
-		}
-		if !username.Valid {
-			user.Username = "sin_usuario"
-		}
-		if lastLogin.Valid {
-			user.LastLogin = lastLogin.Time
-		}
+        if uid.Valid {
+            user.UID = uid.String
+        }
+        if photoURL.Valid {
+            user.PhotoURL = photoURL.String
+        }
+        if !username.Valid {
+            user.Username = "sin_usuario"
+        }
+        if lastLogin.Valid {
+            user.LastLogin = lastLogin.Time
+        }
 
-		users = append(users, &user)
-	}
+        users = append(users, &user)
+    }
 
-	if err = rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating users: %w", err)
-	}
+    if err = rows.Err(); err != nil {
+        return nil, fmt.Errorf("error iterating users: %w", err)
+    }
 
-	return users, nil
+    return users, nil
 }
-func (r *AuthRepositoryImpl) GetUserByID(ctx context.Context, userID int64) (*domain.User, error) {
-	query := `
-        SELECT 
-            id, 
-            uid, 
-            email, 
-            display_name, 
-            photo_url, 
-            provider, 
-            auth_type, 
-            is_active, 
-            created_at, 
-            last_login
-        FROM users
-        WHERE id = ?`
 
-	var user domain.User
-	var uid, photoURL sql.NullString
-
-	err := r.db.QueryRowContext(ctx, query, userID).Scan(
-		&user.ID,
-		&uid,
-		&user.Email,
-		&user.Username,
-		&photoURL,
-		&user.Provider,
-		&user.AuthType,
-		&user.IsActive,
-		&user.CreatedAt,
-		&user.LastLogin,
-	)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("user not found")
-		}
-		return nil, fmt.Errorf("could not get user: %w", err)
-	}
-
-	if uid.Valid {
-		user.UID = uid.String
-	}
-	if photoURL.Valid {
-		user.PhotoURL = photoURL.String
-	}
-
-	return &user, nil
-}
 
 func (r *AuthRepositoryImpl) GetUserMembershipType(ctx context.Context, userID int64) (string, error) {
 	var membershipType string

@@ -1,8 +1,6 @@
-// api/src/login/infrastructure/auth_routes.go
 package infrastructure
 
 import (
-   
     "github.com/gin-gonic/gin"
     "github.com/vicpoo/apigestion-solar-go/src/core"
     "github.com/vicpoo/apigestion-solar-go/src/login/application"
@@ -27,17 +25,13 @@ func InitAuthRoutes(router *gin.Engine) {
         getAuthHandler,
     )
     
-    
-    
     authGroup := router.Group("/api/auth")
     {
         // Endpoints públicos
         authGroup.POST("/email/register", loginController.RegisterEmail)
         authGroup.POST("/email/login", loginController.LoginEmail)
         authGroup.POST("/google", loginController.GoogleAuth)
-        
-        // Nuevo endpoint público para obtener usuarios
-        authGroup.GET("/users", loginController.GetAllUsers) // <- Sin middlewares
+        authGroup.GET("/public/users/:id", loginController.GetPublicUserInfo)
         
         // Endpoints protegidos para usuarios normales
         private := authGroup.Group("")
@@ -55,6 +49,7 @@ func InitAuthRoutes(router *gin.Engine) {
         admin.Use(core.AdminMiddleware())
         {
             admin.GET("/users/:id", loginController.GetUserByID)
+            admin.GET("/users", loginController.GetAllUsers)
         }
     }
 }
