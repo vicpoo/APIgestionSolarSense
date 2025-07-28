@@ -133,3 +133,4 @@ func getClaimValue(claims map[string]interface{}, key string, defaultValue strin
 	}
 	return defaultValue
 }
+

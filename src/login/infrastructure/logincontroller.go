@@ -54,8 +54,8 @@ func (c *LoginController) GetPublicUserInfo(ctx *gin.Context) {
         "success": true,
         "user": gin.H{
             "id":          user.ID,
-            "email":      user.Email,
-            "display_name": user.Username,
+            "email":       user.Email,
+            "display_name": user.DisplayName, // Usamos DisplayName directamente
             "username":    user.Username,
             "photo_url":   user.PhotoURL,
             "provider":    user.Provider,
@@ -298,18 +298,18 @@ func (c *LoginController) GetUserByID(ctx *gin.Context) {
     ctx.JSON(http.StatusOK, gin.H{
         "success": true,
         "user": gin.H{
-            "id":         user.ID,
-            "email":      user.Email,
-            "username":   user.Username,
-            "auth_type":  user.AuthType,
-            "is_active": user.IsActive,
+            "id":          user.ID,
+            "email":       user.Email,
+            "display_name": user.DisplayName,
+            "username":    user.Username,
+            "auth_type":   user.AuthType,
+            "is_active":  user.IsActive,
             "created_at": user.CreatedAt,
             "last_login": user.LastLogin,
-            "photo_url": user.PhotoURL,
+            "photo_url":  user.PhotoURL,
         },
     })
 }
-
 func (c *LoginController) DeleteAccount(ctx *gin.Context) {
     userID, exists := ctx.Get("userID")
     if !exists {

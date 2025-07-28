@@ -2,13 +2,15 @@
 package infrastructure
 
 import (
-	"context"
-	"database/sql"
-	"errors"
-	"fmt"
+    "context"
+    "database/sql"
+    "errors"
+    "fmt"
+   
 
-	"github.com/vicpoo/apigestion-solar-go/src/login/domain"
+    "github.com/vicpoo/apigestion-solar-go/src/login/domain"
 )
+
 
 type AuthRepositoryImpl struct {
 	db *sql.DB
@@ -264,16 +266,16 @@ func (r *AuthRepositoryImpl) GetUserByID(ctx context.Context, userID int64) (*do
 
     var user domain.User
     var (
-        uid, username, photoURL sql.NullString
-        lastLogin               sql.NullTime
+        uid, photoURL sql.NullString
+        lastLogin     sql.NullTime
     )
 
     err := r.db.QueryRowContext(ctx, query, userID).Scan(
         &user.ID,
         &uid,
         &user.Email,
-        &user.Username, // display_name como username
-        &username,
+        &user.DisplayName,
+        &user.Username,
         &photoURL,
         &user.Provider,
         &user.AuthType,
@@ -294,11 +296,9 @@ func (r *AuthRepositoryImpl) GetUserByID(ctx context.Context, userID int64) (*do
     if photoURL.Valid {
         user.PhotoURL = photoURL.String
     }
-    if !username.Valid {
-        user.Username = "sin_usuario"
-    }
     if lastLogin.Valid {
-        user.LastLogin = lastLogin.Time
+        // Asegúrate que LastLogin en domain.User sea *time.Time
+        user.LastLogin = &lastLogin.Time
     }
 
     return &user, nil
@@ -331,16 +331,16 @@ func (r *AuthRepositoryImpl) GetAllUsers(ctx context.Context) ([]*domain.User, e
     for rows.Next() {
         var user domain.User
         var (
-            uid, username, photoURL sql.NullString
-            lastLogin               sql.NullTime
+            uid, photoURL sql.NullString
+            lastLogin     sql.NullTime
         )
 
         err := rows.Scan(
             &user.ID,
             &uid,
             &user.Email,
+            &user.DisplayName,
             &user.Username,
-            &username,
             &photoURL,
             &user.Provider,
             &user.AuthType,
@@ -358,11 +358,8 @@ func (r *AuthRepositoryImpl) GetAllUsers(ctx context.Context) ([]*domain.User, e
         if photoURL.Valid {
             user.PhotoURL = photoURL.String
         }
-        if !username.Valid {
-            user.Username = "sin_usuario"
-        }
         if lastLogin.Valid {
-            user.LastLogin = lastLogin.Time
+            user.LastLogin = &lastLogin.Time
         }
 
         users = append(users, &user)
@@ -374,7 +371,6 @@ func (r *AuthRepositoryImpl) GetAllUsers(ctx context.Context) ([]*domain.User, e
 
     return users, nil
 }
-
 
 func (r *AuthRepositoryImpl) GetUserMembershipType(ctx context.Context, userID int64) (string, error) {
 	var membershipType string

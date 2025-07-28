@@ -83,10 +83,12 @@ type User struct {
     UID       string    `json:"uid,omitempty"`
     Email     string    `json:"email"`
     Username  string    `json:"username"`
+	DisplayName string     `json:"display_name"`
     AuthType  string    `json:"auth_type"`
     IsActive  bool      `json:"is_active"`
     IsAdmin   bool      `json:"is_admin"`
-    LastLogin time.Time `json:"last_login,omitempty"`
+	
+    LastLogin   *time.Time `json:"last_login,omitempty"`
     PhotoURL  string    `json:"photo_url,omitempty"`
     Provider  string    `json:"provider,omitempty"`
     CreatedAt time.Time `json:"created_at,omitempty"`
