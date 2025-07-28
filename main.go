@@ -77,7 +77,7 @@ alertService := application.NewAlertService(
 
 	// Configuración CORS mejorada
 	router.Use(cors.New(cors.Config{
-		AllowOrigins:     []string{"https://solarsense.zapto.org", "http://localhost:4200", "https://frontsolarsense.servepics.com"},
+		AllowOrigins:     []string{"https://solarsense.zapto.org", "http://localhost:4200", "https://frontsolarsense.servepics.com", "http://3.229.144.5/"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization", "Accept"},
 		ExposeHeaders:    []string{"Content-Length"},
