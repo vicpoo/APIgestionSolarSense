@@ -2,15 +2,16 @@
 package infrastructure
 
 import (
-    "log"
-    "net/http"
-    "strconv"
+	"fmt"
+	"log"
+	"net/http"
+	"strconv"
 
-    "github.com/gin-gonic/gin"
-    "github.com/vicpoo/apigestion-solar-go/src/core"
-    "github.com/vicpoo/apigestion-solar-go/src/login/application"
-    "github.com/vicpoo/apigestion-solar-go/src/login/domain"
-    "golang.org/x/crypto/bcrypt"
+	"github.com/gin-gonic/gin"
+	"github.com/vicpoo/apigestion-solar-go/src/core"
+	"github.com/vicpoo/apigestion-solar-go/src/login/application"
+	"github.com/vicpoo/apigestion-solar-go/src/login/domain"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type LoginController struct {
@@ -46,7 +47,18 @@ func (c *LoginController) GetPublicUserInfo(ctx *gin.Context) {
 
     user, err := c.getUseCase.GetUserByID(ctx.Request.Context(), userID)
     if err != nil {
-        ctx.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
+        // Loggear el error para diagnóstico
+        log.Printf("Error al buscar usuario ID %d: %v", userID, err)
+        ctx.JSON(http.StatusNotFound, gin.H{
+            "error": "User not found",
+            "details": fmt.Sprintf("No se encontró el usuario con ID %d", userID),
+        })
+        return
+    }
+
+    // Verificar si el usuario está activo
+    if !user.IsActive {
+        ctx.JSON(http.StatusNotFound, gin.H{"error": "User account is not active"})
         return
     }
 
@@ -55,7 +67,7 @@ func (c *LoginController) GetPublicUserInfo(ctx *gin.Context) {
         "user": gin.H{
             "id":          user.ID,
             "email":       user.Email,
-            "display_name": user.DisplayName, // Usamos DisplayName directamente
+            "display_name": user.DisplayName,
             "username":    user.Username,
             "photo_url":   user.PhotoURL,
             "provider":    user.Provider,
@@ -66,7 +78,6 @@ func (c *LoginController) GetPublicUserInfo(ctx *gin.Context) {
         },
     })
 }
-
 func (c *LoginController) GetCurrentUser(ctx *gin.Context) {
     claims, exists := ctx.Get("jwtClaims")
     if !exists {

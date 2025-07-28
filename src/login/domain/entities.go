@@ -79,17 +79,16 @@ type UserCredentials struct {
     Username string `json:"username"`
 }
 type User struct {
-    ID        int64     `json:"id"`
-    UID       string    `json:"uid,omitempty"`
-    Email     string    `json:"email"`
-    Username  string    `json:"username"`
-	DisplayName string     `json:"display_name"`
-    AuthType  string    `json:"auth_type"`
-    IsActive  bool      `json:"is_active"`
-    IsAdmin   bool      `json:"is_admin"`
-	
+    ID          int64      `json:"id"`
+    UID         string     `json:"uid,omitempty"`
+    Email       string     `json:"email"`
+    DisplayName string     `json:"display_name"`
+    Username    string     `json:"username"`
+    AuthType    string     `json:"auth_type"`
+    IsActive    bool       `json:"is_active"`
+    IsAdmin     bool       `json:"is_admin"`
     LastLogin   *time.Time `json:"last_login,omitempty"`
-    PhotoURL  string    `json:"photo_url,omitempty"`
-    Provider  string    `json:"provider,omitempty"`
-    CreatedAt time.Time `json:"created_at,omitempty"`
+    PhotoURL    string     `json:"photo_url,omitempty"`
+    Provider    string     `json:"provider,omitempty"`
+    CreatedAt   time.Time  `json:"created_at,omitempty"`
 }

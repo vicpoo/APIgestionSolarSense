@@ -2,13 +2,13 @@
 package infrastructure
 
 import (
-    "context"
-    "database/sql"
-    "errors"
-    "fmt"
-   
+	"context"
+	"database/sql"
+	"errors"
+	"fmt"
+	"log"
 
-    "github.com/vicpoo/apigestion-solar-go/src/login/domain"
+	"github.com/vicpoo/apigestion-solar-go/src/login/domain"
 )
 
 
@@ -248,6 +248,7 @@ func (r *AuthRepositoryImpl) DeleteUserByEmail(ctx context.Context, email string
 
 
 func (r *AuthRepositoryImpl) GetUserByID(ctx context.Context, userID int64) (*domain.User, error) {
+	log.Printf("Buscando usuario con ID: %d", userID)
     query := `
         SELECT 
             id, 
@@ -266,8 +267,8 @@ func (r *AuthRepositoryImpl) GetUserByID(ctx context.Context, userID int64) (*do
 
     var user domain.User
     var (
-        uid, photoURL sql.NullString
-        lastLogin     sql.NullTime
+        uid, username, photoURL sql.NullString
+        lastLogin               sql.NullTime
     )
 
     err := r.db.QueryRowContext(ctx, query, userID).Scan(
@@ -275,7 +276,7 @@ func (r *AuthRepositoryImpl) GetUserByID(ctx context.Context, userID int64) (*do
         &uid,
         &user.Email,
         &user.DisplayName,
-        &user.Username,
+        &username,
         &photoURL,
         &user.Provider,
         &user.AuthType,
@@ -290,14 +291,19 @@ func (r *AuthRepositoryImpl) GetUserByID(ctx context.Context, userID int64) (*do
         return nil, fmt.Errorf("could not get user: %w", err)
     }
 
+    // Manejar campos NULL
     if uid.Valid {
         user.UID = uid.String
     }
     if photoURL.Valid {
         user.PhotoURL = photoURL.String
     }
+    if username.Valid {
+        user.Username = username.String
+    } else {
+        user.Username = user.DisplayName // Usar display_name si username es NULL
+    }
     if lastLogin.Valid {
-        // Asegúrate que LastLogin en domain.User sea *time.Time
         user.LastLogin = &lastLogin.Time
     }
 
