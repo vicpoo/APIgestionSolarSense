@@ -424,3 +424,38 @@ func (c *LoginController) GetAllGoogleUsers(ctx *gin.Context) {
         "users":   response,
     })
 }
+
+func (c *LoginController) UpdateGoogleUserProfile(ctx *gin.Context) {
+    // Obtener el userID del JWT
+    claims, exists := ctx.Get("jwtClaims")
+    if !exists {
+        ctx.JSON(http.StatusUnauthorized, gin.H{"error": "User not authenticated"})
+        return
+    }
+
+    jwtClaims, ok := claims.(*core.JWTClaims)
+    if !ok {
+        ctx.JSON(http.StatusInternalServerError, gin.H{"error": "Invalid token claims"})
+        return
+    }
+
+    var updateRequest struct {
+        DisplayName string `json:"display_name" binding:"required"`
+    }
+    
+    if err := ctx.ShouldBindJSON(&updateRequest); err != nil {
+        ctx.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request: " + err.Error()})
+        return
+    }
+
+    response, err := c.authHandlers.UpdateGoogleUserProfile(ctx, jwtClaims.UserID, updateRequest.DisplayName)
+    if err != nil {
+        ctx.JSON(http.StatusBadRequest, gin.H{
+            "error": err.Error(),
+            "type": "validation_error",
+        })
+        return
+    }
+
+    ctx.JSON(http.StatusOK, response)
+}

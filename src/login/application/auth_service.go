@@ -177,3 +177,30 @@ func (s *AuthServiceImpl) UpdateUserProfile(ctx context.Context, userID int64, e
         UserID:  userID,
     }, nil
 }
+
+func (s *AuthServiceImpl) UpdateGoogleUserProfile(ctx context.Context, userID int64, displayName string) (*domain.AuthResponse, error) {
+    // Obtener el usuario actual para verificar que es de Google
+    user, err := s.repo.GetUserByID(ctx, userID)
+    if err != nil {
+        return nil, fmt.Errorf("user not found: %w", err)
+    }
+
+    // Verificar que el auth_type sea google
+    if user.AuthType != "google" {
+        return nil, errors.New("only google users can be updated with this endpoint")
+    }
+
+    // Actualizar solo el display_name
+    if displayName != "" {
+        err = s.repo.UpdateDisplayName(ctx, userID, displayName)
+        if err != nil {
+            return nil, fmt.Errorf("could not update display_name: %w", err)
+        }
+    }
+
+    return &domain.AuthResponse{
+        Success: true,
+        Message: "Google user profile updated successfully",
+        UserID:  userID,
+    }, nil
+}

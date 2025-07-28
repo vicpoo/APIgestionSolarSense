@@ -131,3 +131,7 @@ func (h *AuthHandlers) UpdateUserProfile(c *gin.Context) (*domain.AuthResponse, 
     // 5. Llamar al servicio
     return h.service.UpdateUserProfile(c.Request.Context(), updateData.UserID, updateData.Email, updateData.Username, updateData.DisplayName, updateData.AuthType)
 }
+
+func (h *AuthHandlers) UpdateGoogleUserProfile(ctx *gin.Context, userID int64, displayName string) (*domain.AuthResponse, error) {
+    return h.service.UpdateGoogleUserProfile(ctx.Request.Context(), userID, displayName)
+}
