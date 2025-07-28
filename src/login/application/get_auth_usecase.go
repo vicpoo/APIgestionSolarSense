@@ -34,3 +34,10 @@ func (uc *GetAuthUseCase) GetUserByID(ctx context.Context, userID int64) (*domai
 func (uc *GetAuthUseCase) GetUserMembershipType(ctx context.Context, userID int64) (string, error) {
     return uc.Repo.GetUserMembershipType(ctx, userID)
 }
+func (uc *GetAuthUseCase) GetGoogleUserByUID(ctx context.Context, uid string) (*domain.User, error) {
+    return uc.Repo.GetGoogleUserByUID(ctx, uid)
+}
+
+func (uc *GetAuthUseCase) GetAllGoogleUsers(ctx context.Context) ([]*domain.User, error) {
+    return uc.Repo.GetAllGoogleUsers(ctx)
+}

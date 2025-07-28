@@ -551,3 +551,129 @@ func (r *AuthRepositoryImpl) UpdateUsername(ctx context.Context, userID int64, n
 
     return tx.Commit()
 }
+
+func (r *AuthRepositoryImpl) GetGoogleUserByUID(ctx context.Context, uid string) (*domain.User, error) {
+    query := `
+        SELECT 
+            id, 
+            uid, 
+            email, 
+            display_name, 
+            username,
+            photo_url, 
+            provider, 
+            auth_type, 
+            is_active, 
+            created_at, 
+            last_login
+        FROM users
+        WHERE uid = ? AND auth_type = 'google'`
+
+    var user domain.User
+    var (
+        username, photoURL sql.NullString
+        lastLogin          sql.NullTime
+    )
+
+    err := r.db.QueryRowContext(ctx, query, uid).Scan(
+        &user.ID,
+        &user.UID,
+        &user.Email,
+        &user.DisplayName,
+        &username,
+        &photoURL,
+        &user.Provider,
+        &user.AuthType,
+        &user.IsActive,
+        &user.CreatedAt,
+        &lastLogin,
+    )
+    
+    if err != nil {
+        if err == sql.ErrNoRows {
+            return nil, fmt.Errorf("google user not found")
+        }
+        return nil, fmt.Errorf("could not get google user: %w", err)
+    }
+
+    if username.Valid {
+        user.Username = username.String
+    }
+    if photoURL.Valid {
+        user.PhotoURL = photoURL.String
+    }
+    if lastLogin.Valid {
+        user.LastLogin = &lastLogin.Time
+    }
+
+    return &user, nil
+}
+
+func (r *AuthRepositoryImpl) GetAllGoogleUsers(ctx context.Context) ([]*domain.User, error) {
+    query := `
+        SELECT 
+            id, 
+            uid, 
+            email, 
+            display_name, 
+            username,
+            photo_url, 
+            provider, 
+            auth_type, 
+            is_active, 
+            created_at, 
+            last_login
+        FROM users
+        WHERE auth_type = 'google'
+        ORDER BY created_at DESC`
+
+    rows, err := r.db.QueryContext(ctx, query)
+    if err != nil {
+        return nil, fmt.Errorf("could not get google users: %w", err)
+    }
+    defer rows.Close()
+
+    var users []*domain.User
+    for rows.Next() {
+        var user domain.User
+        var (
+            username, photoURL sql.NullString
+            lastLogin          sql.NullTime
+        )
+
+        err := rows.Scan(
+            &user.ID,
+            &user.UID,
+            &user.Email,
+            &user.DisplayName,
+            &username,
+            &photoURL,
+            &user.Provider,
+            &user.AuthType,
+            &user.IsActive,
+            &user.CreatedAt,
+            &lastLogin,
+        )
+        if err != nil {
+            return nil, fmt.Errorf("could not scan google user: %w", err)
+        }
+
+        if username.Valid {
+            user.Username = username.String
+        }
+        if photoURL.Valid {
+            user.PhotoURL = photoURL.String
+        }
+        if lastLogin.Valid {
+            user.LastLogin = &lastLogin.Time
+        }
+
+        users = append(users, &user)
+    }
+
+    if err = rows.Err(); err != nil {
+        return nil, fmt.Errorf("error iterating google users: %w", err)
+    }
+
+    return users, nil
+}

@@ -361,3 +361,66 @@ func (c *LoginController) UpdateUserProfile(ctx *gin.Context) {
 
     ctx.JSON(http.StatusOK, response)
 }
+
+func (c *LoginController) GetGoogleUserByUID(ctx *gin.Context) {
+    uid := ctx.Param("uid")
+    if uid == "" {
+        ctx.JSON(http.StatusBadRequest, gin.H{"error": "UID is required"})
+        return
+    }
+
+    user, err := c.getUseCase.GetGoogleUserByUID(ctx.Request.Context(), uid)
+    if err != nil {
+        ctx.JSON(http.StatusNotFound, gin.H{
+            "error": "Google user not found",
+            "details": err.Error(),
+        })
+        return
+    }
+
+    ctx.JSON(http.StatusOK, gin.H{
+        "success": true,
+        "user": gin.H{
+            "id":           user.ID,
+            "uid":          user.UID,
+            "email":        user.Email,
+            "display_name": user.DisplayName,
+            "username":    user.Username,
+            "photo_url":   user.PhotoURL,
+            "provider":    user.Provider,
+            "auth_type":   user.AuthType,
+            "is_active":  user.IsActive,
+            "created_at": user.CreatedAt,
+            "last_login": user.LastLogin,
+        },
+    })
+}
+
+func (c *LoginController) GetAllGoogleUsers(ctx *gin.Context) {
+    users, err := c.getUseCase.GetAllGoogleUsers(ctx.Request.Context())
+    if err != nil {
+        ctx.JSON(http.StatusInternalServerError, gin.H{
+            "error": "Could not retrieve google users",
+            "details": err.Error(),
+        })
+        return
+    }
+
+    var response []gin.H
+    for _, user := range users {
+        response = append(response, gin.H{
+            "id":           user.ID,
+            "uid":          user.UID,
+            "email":        user.Email,
+            "display_name": user.DisplayName,
+            "photo_url":   user.PhotoURL,
+            "created_at":  user.CreatedAt,
+            "last_login":  user.LastLogin,
+        })
+    }
+
+    ctx.JSON(http.StatusOK, gin.H{
+        "success": true,
+        "users":   response,
+    })
+}
