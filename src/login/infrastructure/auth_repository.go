@@ -468,3 +468,86 @@ func (r *AuthRepositoryImpl) GetBasicUserInfo(ctx context.Context, email string)
     user.IsAdmin = isAdmin
     return &user, nil
 }
+
+func (r *AuthRepositoryImpl) UpdateDisplayName(ctx context.Context, userID int64, displayName string) error {
+    _, err := r.db.ExecContext(ctx, 
+        "UPDATE users SET display_name = ? WHERE id = ?", 
+        displayName, userID)
+    return err
+}
+
+func (r *AuthRepositoryImpl) UpdateUserEmailById(ctx context.Context, userID int64, newEmail string) error {
+    tx, err := r.db.BeginTx(ctx, nil)
+    if err != nil {
+        return fmt.Errorf("could not start transaction: %w", err)
+    }
+    defer tx.Rollback()
+
+    // Verificar si el nuevo email ya existe
+    var count int
+    err = tx.QueryRowContext(ctx, 
+        "SELECT COUNT(*) FROM users WHERE email = ? AND id != ?", 
+        newEmail, userID).Scan(&count)
+    if err != nil {
+        return fmt.Errorf("could not check email existence: %w", err)
+    }
+    if count > 0 {
+        return errors.New("email already in use")
+    }
+
+    // Actualizar email en users
+    _, err = tx.ExecContext(ctx, 
+        "UPDATE users SET email = ? WHERE id = ?", 
+        newEmail, userID)
+    if err != nil {
+        return fmt.Errorf("could not update email in users: %w", err)
+    }
+
+    // Actualizar email en email_auth
+    _, err = tx.ExecContext(ctx, 
+        "UPDATE email_auth SET email = ? WHERE user_id = ?", 
+        newEmail, userID)
+    if err != nil {
+        return fmt.Errorf("could not update email in email_auth: %w", err)
+    }
+
+    return tx.Commit()
+}
+
+func (r *AuthRepositoryImpl) UpdateUsername(ctx context.Context, userID int64, newUsername string) error {
+    tx, err := r.db.BeginTx(ctx, nil)
+    if err != nil {
+        return fmt.Errorf("could not start transaction: %w", err)
+    }
+    defer tx.Rollback()
+
+    // Verificar si el nuevo username ya existe
+    var count int
+    err = tx.QueryRowContext(ctx, 
+        "SELECT COUNT(*) FROM users WHERE username = ? AND id != ?", 
+        newUsername, userID).Scan(&count)
+    if err != nil {
+        return fmt.Errorf("could not check username existence: %w", err)
+    }
+    if count > 0 {
+        return errors.New("username already in use")
+    }
+
+    // Actualizar username en users
+    _, err = tx.ExecContext(ctx, 
+        "UPDATE users SET username = ? WHERE id = ?", 
+        newUsername, userID)
+    if err != nil {
+        return fmt.Errorf("could not update username in users: %w", err)
+    }
+
+    // Actualizar username en email_auth
+    _, err = tx.ExecContext(ctx, 
+        "UPDATE email_auth SET username = ? WHERE user_id = ?", 
+        newUsername, userID)
+    if err != nil {
+        return fmt.Errorf("could not update username in email_auth: %w", err)
+    }
+
+    return tx.Commit()
+}

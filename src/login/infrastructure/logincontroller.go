@@ -348,3 +348,16 @@ func (c *LoginController) DeleteAccount(ctx *gin.Context) {
 func decodeTokenWithoutVerification(idToken string) (map[string]interface{}, error) {
     return nil, nil
 }
+
+func (c *LoginController) UpdateUserProfile(ctx *gin.Context) {
+    response, err := c.authHandlers.UpdateUserProfile(ctx)
+    if err != nil {
+        ctx.JSON(http.StatusBadRequest, gin.H{
+            "error": err.Error(),
+            "type": "validation_error",
+        })
+        return
+    }
+
+    ctx.JSON(http.StatusOK, response)
+}

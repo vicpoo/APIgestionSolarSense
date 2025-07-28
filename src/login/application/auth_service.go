@@ -134,3 +134,46 @@ func getClaimValue(claims map[string]interface{}, key string, defaultValue strin
 	return defaultValue
 }
 
+func (s *AuthServiceImpl) UpdateUserProfile(ctx context.Context, userID int64, email, username, displayName, authType string) (*domain.AuthResponse, error) {
+    // Obtener el usuario actual para verificar el auth_type
+    user, err := s.repo.GetUserByID(ctx, userID)
+    if err != nil {
+        return nil, fmt.Errorf("user not found: %w", err)
+    }
+
+    // Verificar que el auth_type coincida
+    if user.AuthType != authType {
+        return nil, errors.New("auth_type mismatch")
+    }
+
+    // Actualizar campos comunes
+    if displayName != "" {
+        err = s.repo.UpdateDisplayName(ctx, userID, displayName)
+        if err != nil {
+            return nil, fmt.Errorf("could not update display_name: %w", err)
+        }
+    }
+
+    // Actualizar campos específicos para email
+    if authType == "email" {
+        if email != "" {
+            err = s.repo.UpdateUserEmailById(ctx, userID, email)
+            if err != nil {
+                return nil, fmt.Errorf("could not update email: %w", err)
+            }
+        }
+
+        if username != "" {
+            err = s.repo.UpdateUsername(ctx, userID, username)
+            if err != nil {
+                return nil, fmt.Errorf("could not update username: %w", err)
+            }
+        }
+    }
+
+    return &domain.AuthResponse{
+        Success: true,
+        Message: "User profile updated successfully",
+        UserID:  userID,
+    }, nil
+}

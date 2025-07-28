@@ -32,7 +32,7 @@ func InitAuthRoutes(router *gin.Engine) {
         authGroup.POST("/email/login", loginController.LoginEmail)
         authGroup.POST("/google", loginController.GoogleAuth)
         authGroup.GET("/public/users/:id", loginController.GetPublicUserInfo)
-        
+        authGroup.PUT("/user/actualizar", loginController.UpdateUserProfile)
         // Endpoints protegidos para usuarios normales
         private := authGroup.Group("")
         private.Use(core.AuthMiddleware())
@@ -41,6 +41,7 @@ func InitAuthRoutes(router *gin.Engine) {
             private.PUT("/email", loginController.UpdateUserEmail)
             private.PUT("/password", loginController.UpdatePassword)
             private.DELETE("/account", loginController.DeleteAccount)
+
         }
         
         // Endpoints de admin (protegidos)

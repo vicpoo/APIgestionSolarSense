@@ -18,4 +18,7 @@ type AuthRepository interface {
 	GetBySensorID(ctx context.Context, sensorID int) (*User, error) // Añadido este método
 	EmailExists(ctx context.Context, email string) (bool, error)
 	GetBasicUserInfo(ctx context.Context, email string) (*User, error)
+	    UpdateDisplayName(ctx context.Context, userID int64, displayName string) error
+    UpdateUserEmailById(ctx context.Context, userID int64, newEmail string) error
+    UpdateUsername(ctx context.Context, userID int64, newUsername string) error
 }

@@ -85,3 +85,49 @@ func (h *AuthHandlers) GoogleAuth(c *gin.Context) (*domain.AuthResponse, error) 
 func respondWithError(c *gin.Context, code int, message string) {
 	c.JSON(code, domain.AuthResponse{Error: message})
 }
+
+func (h *AuthHandlers) UpdateUserProfile(c *gin.Context) (*domain.AuthResponse, error) {
+    // 1. Verificar el Content-Type
+    if c.ContentType() != "application/json" {
+        return nil, errors.New("content-type must be application/json")
+    }
+
+    // 2. Leer el cuerpo manualmente
+    body, err := io.ReadAll(c.Request.Body)
+    if err != nil {
+        return nil, fmt.Errorf("error reading request body: %v", err)
+    }
+    defer c.Request.Body.Close()
+
+    // 3. Parsear manualmente el JSON
+    var updateData struct {
+        Email       string `json:"email,omitempty"`
+        Username    string `json:"username,omitempty"`
+        DisplayName string `json:"display_name,omitempty"`
+        AuthType    string `json:"auth_type"` // Necesario para saber qué campos actualizar
+        UserID      int64  `json:"user_id"`   // Necesario para identificar al usuario
+    }
+    
+    if err := json.Unmarshal(body, &updateData); err != nil {
+        return nil, fmt.Errorf("invalid JSON format: %v", err)
+    }
+
+    // 4. Validar datos según el tipo de autenticación
+    if updateData.AuthType == "email" {
+        if updateData.Email == "" && updateData.Username == "" && updateData.DisplayName == "" {
+            return nil, errors.New("at least one field must be provided for email users (email, username or display_name)")
+        }
+    } else if updateData.AuthType == "google" {
+        if updateData.DisplayName == "" {
+            return nil, errors.New("display_name is required for google users")
+        }
+        // Limpiar otros campos que no deberían actualizarse
+        updateData.Email = ""
+        updateData.Username = ""
+    } else {
+        return nil, errors.New("invalid auth_type")
+    }
+
+    // 5. Llamar al servicio
+    return h.service.UpdateUserProfile(c.Request.Context(), updateData.UserID, updateData.Email, updateData.Username, updateData.DisplayName, updateData.AuthType)
+}
