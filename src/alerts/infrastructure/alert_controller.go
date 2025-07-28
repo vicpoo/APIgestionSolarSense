@@ -217,6 +217,14 @@ func (c *AlertController) CheckSensorAlerts(ctx *gin.Context) {
         return
     }
 
+    // Mapa de nombres de sensores según su ID
+    sensorNames := map[int]string{
+        5: "DHT11 (Humedad)",
+        6: "BMP280 (Presión)",
+        7: "DS18B20 (Temperatura)",
+        9: "Otro Sensor", // Actualiza esto según tus necesidades
+    }
+
     // Obtener la fecha actual
     currentDate := time.Now().Format("2006-01-02")
     
@@ -241,17 +249,20 @@ func (c *AlertController) CheckSensorAlerts(ctx *gin.Context) {
     for _, reading := range lastReadings {
         if reading.Humidity != nil && *reading.Humidity > 80 {
             alertMessages = append(alertMessages, 
-                fmt.Sprintf("Alerta de humedad: %.2f%% (mayor que 80%%)", *reading.Humidity))
+                fmt.Sprintf("Alerta de humedad: %.2f%% (mayor que 80%%) - Sensor: %s", 
+                    *reading.Humidity, sensorNames[reading.SensorID]))
         }
         
         if reading.Temperature != nil && *reading.Temperature > 35 {
             alertMessages = append(alertMessages, 
-                fmt.Sprintf("Alerta de temperatura: %.2f°C (mayor que 35°C)", *reading.Temperature))
+                fmt.Sprintf("Alerta de temperatura: %.2f°C (mayor que 35°C) - Sensor: %s", 
+                    *reading.Temperature, sensorNames[reading.SensorID]))
         }
         
         if reading.Pressure != nil && *reading.Pressure < 990 {
             alertMessages = append(alertMessages, 
-                fmt.Sprintf("Alerta de presión: %.2fhPa (menor que 990hPa)", *reading.Pressure))
+                fmt.Sprintf("Alerta de presión: %.2fhPa (menor que 990hPa) - Sensor: %s", 
+                    *reading.Pressure, sensorNames[reading.SensorID]))
         }
     }
     
@@ -273,8 +284,13 @@ func (c *AlertController) CheckSensorAlerts(ctx *gin.Context) {
     }
     body += "\nÚltimas lecturas:\n"
     for _, reading := range lastReadings {
-        body += fmt.Sprintf("- Sensor %d: Temp=%.2f°C, Hum=%.2f%%, Pres=%.2fhPa, Registrado: %s\n",
-            reading.SensorID,
+        sensorName, exists := sensorNames[reading.SensorID]
+        if !exists {
+            sensorName = fmt.Sprintf("Sensor %d", reading.SensorID)
+        }
+        
+        body += fmt.Sprintf("- %s: Temp=%.2f°C, Hum=%.2f%%, Pres=%.2fhPa, Registrado: %s\n",
+            sensorName,
             safeFloat(reading.Temperature),
             safeFloat(reading.Humidity),
             safeFloat(reading.Pressure),
@@ -291,16 +307,33 @@ func (c *AlertController) CheckSensorAlerts(ctx *gin.Context) {
         return
     }
     
+    // Preparar respuesta con nombres de sensores
+    var responseReadings []map[string]interface{}
+    for _, reading := range lastReadings {
+        sensorName, exists := sensorNames[reading.SensorID]
+        if !exists {
+            sensorName = fmt.Sprintf("Sensor %d", reading.SensorID)
+        }
+        
+        responseReadings = append(responseReadings, map[string]interface{}{
+            "sensor_id":   reading.SensorID,
+            "sensor_name": sensorName,
+            "temperature": reading.Temperature,
+            "humidity":    reading.Humidity,
+            "pressure":    reading.Pressure,
+            "recorded_at": reading.RecordedAt.Format("2006-01-02 15:04:05"),
+        })
+    }
+    
     ctx.JSON(http.StatusOK, gin.H{
         "status": "alerts_sent",
         "message": "Alertas enviadas por correo",
         "alerts": alertMessages,
-        "readings": lastReadings,
+        "readings": responseReadings,
         "user_email": userEmail,
         "admin_email": request.AdminEmail,
     })
 }
-
 // Función auxiliar para manejar valores nulos
 func safeFloat(f *float64) float64 {
     if f == nil {
